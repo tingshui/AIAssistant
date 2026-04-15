@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aha! Catcher — Background monitor</title>
+  <style>
+    :root {
+      --text: #1a1a18;
+      --muted: #5c5a54;
+      --border: #ddd8cf;
+      --bg: #faf9f6;
+      --accent: #2563eb;
+      --ok: #166534;
+      --warn: #a16207;
+      --bad: #b91c1c;
+    }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      padding: 1.25rem 1.5rem 2.5rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      max-width: 52rem;
+      margin-inline: auto;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; }
+    .sub { color: var(--muted); font-size: 0.92rem; margin: 0 0 1.25rem; }
+    a { color: var(--accent); }
+    .pill {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .pill.ok { background: #dcfce7; color: var(--ok); }
+    .pill.stale { background: #fef9c3; color: var(--warn); }
+    .pill.no_data { background: #fee2e2; color: var(--bad); }
+    .pill.unknown { background: #e5e7eb; color: var(--muted); }
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.1rem;
+      margin-bottom: 1rem;
+    }
+    .card h2 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.65rem;
+    }
+    dl.grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.35rem 1.25rem;
+      margin: 0;
+      font-size: 0.95rem;
+    }
+    dl.grid dt { color: var(--muted); margin: 0; }
+    dl.grid dd { margin: 0; word-break: break-word; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.4rem 0.5rem;
+      text-align: left;
+      vertical-align: top;
+    }
+    th { background: #f3f1ec; font-weight: 600; }
+    td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .err { color: var(--bad); }
+    button {
+      margin-top: 0.5rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:hover { background: #f5f3ef; }
+    #loadErr { color: var(--bad); margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Background monitor</h1>
+  <p class="sub">
+    Mirror sync + quick-memo scan (launchd), and quick-memo transcripts from local metrics.
+    <a href="./">← Back to app</a>
+  </p>
+
+  <div id="loadErr" hidden></div>
+  <div id="summary" class="card" hidden>
+    <h2>Status</h2>
+    <p><span id="healthPill" class="pill"></span> <span id="healthMsg"></span></p>
+    <dl class="grid">
+      <dt>Server</dt><dd id="srvOk">—</dd>
+      <dt>Expected interval</dt><dd id="intervalSec">—</dd>
+      <dt>Last sync / scan activity</dt><dd id="lastChain">—</dd>
+      <dt>Next run (estimate)</dt><dd id="nextRun">—</dd>
+      <dt>Last mirror sync</dt><dd id="lastSync">—</dd>
+      <dt>Last file scan</dt><dd id="lastScan">—</dd>
+      <dt>Last quick-memo transcript</dt><dd id="lastQm">—</dd>
+    </dl>
+    <button type="button" id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="card">
+    <h2>Mirror &amp; scan log <span style="font-weight:400;text-transform:none;color:var(--muted)">(latest 30)</span></h2>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Time (UTC)</th>
+            <th>Event</th>
+            <th>Summary</th>
+          </tr>
+        </thead>
+        <tbody id="monBody">
+          <tr><td colspan="3">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Quick-memo transcripts <span style="font-weight:400;text-transform:none;color:var(--muted)">(from metrics)</span></h2>
+    <div style="overflow-x:auto">
+      <table>
+        <thead>
+          <tr>
+            <th>Time (UTC)</th>
+            <th>Chars</th>
+            <th>Category</th>
+          </tr>
+        </thead>
+        <tbody id="qmBody">
+          <tr><td colspan="3">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  const API = "/api/background-status?days=3";
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s == null ? "" : String(s);
+    return d.innerHTML;
+  }
+
+  function fmtTs(iso) {
+    if (!iso) return "—";
+    try {
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? iso : d.toISOString().replace("T", " ").slice(0, 19) + " UTC";
+    } catch (e) {
+      return iso;
+    }
+  }
+
+  function summarizeMonRow(r) {
+    const ev = r.event || "";
+    if (ev === "voice_memos_sync") {
+      const bits = [
+        r.ok === false ? "FAILED" : "ok",
+        `copied ${r.copied ?? "?"}`,
+        `skipped ${r.skipped ?? "?"}`,
+        `errors ${r.errors ?? "?"}`,
+      ];
+      if (r.dry_run) bits.push("dry_run");
+      return bits.join(" · ");
+    }
+    if (ev === "quick_memo_scan") {
+      return [
+        `posted ${r.posted ?? "?"}`,
+        `skipped ${r.skipped_already_done ?? "?"}`,
+        `scanned ${r.scanned_files ?? "?"}`,
+        r.dry_run ? "dry_run" : "",
+      ].filter(Boolean).join(" · ");
+    }
+    return JSON.stringify(r).slice(0, 200);
+  }
+
+  async function load() {
+    const errEl = document.getElementById("loadErr");
+    const summary = document.getElementById("summary");
+    errEl.hidden = true;
+    try {
+      const res = await fetch(API);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+
+      summary.hidden = false;
+      document.getElementById("srvOk").textContent = "Running (this page loaded)";
+      document.getElementById("intervalSec").textContent =
+        (data.background_interval_sec || 0) + " s (~" + Math.round((data.background_interval_sec || 0) / 60) + " min)";
+
+      const h = data.health || "unknown";
+      const pill = document.getElementById("healthPill");
+      pill.textContent = h;
+      pill.className = "pill " + (h === "ok" ? "ok" : h === "stale" ? "stale" : h === "no_data" ? "no_data" : "unknown");
+      document.getElementById("healthMsg").textContent = data.health_message || "";
+
+      document.getElementById("lastChain").textContent = fmtTs(data.last_background_chain_time_utc);
+      document.getElementById("nextRun").textContent = fmtTs(data.next_expected_background_run_utc);
+
+      const ls = data.last_voice_memos_sync;
+      document.getElementById("lastSync").textContent = ls
+        ? (ls.ok ? "OK" : "FAILED") + " — copied " + (ls.copied ?? "?") + ", errors " + (ls.errors ?? "?")
+        : "—";
+
+      const sc = data.last_quick_memo_scan;
+      document.getElementById("lastScan").textContent = sc
+        ? "posted " + (sc.posted ?? "?") + ", scanned " + (sc.scanned_files ?? "?") + " files"
+        : "—";
+
+      const qm = data.last_quick_memo_transcribe;
+      document.getElementById("lastQm").textContent = qm
+        ? (qm.text_chars ?? "?") + " chars · " + (qm.category || "?")
+        : (data.metrics_enabled === false ? "Metrics disabled in .env" : "—");
+
+      const monRows = data.monitor_events_window || [];
+      const monBody = document.getElementById("monBody");
+      if (!monRows.length) {
+        monBody.innerHTML = "<tr><td colspan=\"3\">No rows in window (run updated scripts to log here).</td></tr>";
+      } else {
+        monBody.innerHTML = monRows
+          .slice()
+          .reverse()
+          .map(function (r) {
+            return (
+              "<tr><td>" +
+              esc(fmtTs(r.ts)) +
+              "</td><td>" +
+              esc(r.event) +
+              "</td><td>" +
+              esc(summarizeMonRow(r)) +
+              "</td></tr>"
+            );
+          })
+          .join("");
+      }
+
+      const qmRows = data.quick_memo_transcribe_events_window || [];
+      const qmBody = document.getElementById("qmBody");
+      if (!qmRows.length) {
+        qmBody.innerHTML =
+          "<tr><td colspan=\"3\">No quick_memo events in window (or metrics off).</td></tr>";
+      } else {
+        qmBody.innerHTML = qmRows
+          .slice()
+          .reverse()
+          .map(function (r) {
+            return (
+              "<tr><td>" +
+              esc(fmtTs(r.ts)) +
+              '</td><td class="num">' +
+              esc(r.text_chars) +
+              "</td><td>" +
+              esc(r.category) +
+              "</td></tr>"
+            );
+          })
+          .join("");
+      }
+    } catch (e) {
+      errEl.hidden = false;
+      errEl.textContent = "Could not load status (is uvicorn running?). " + (e && e.message ? e.message : e);
+      document.getElementById("monBody").innerHTML =
+        "<tr><td colspan=\"3\" class=\"err\">Failed to load</td></tr>";
+      document.getElementById("qmBody").innerHTML =
+        "<tr><td colspan=\"3\" class=\"err\">Failed to load</td></tr>";
+    }
+  }
+
+  document.getElementById("refreshBtn").addEventListener("click", load);
+  load();
+})();
+  </script>
+</body>
+</html>

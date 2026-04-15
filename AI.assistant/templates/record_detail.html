@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}记录详情 - {{ person }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-0">记录详情</h4>
+      <div class="text-muted small">成员：{{ person }} · record_id：{{ record.record_id }}</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" href="/person/{{ person }}/records">返回列表</a>
+      <a class="btn btn-outline-primary" href="/person/{{ person }}/record/{{ record.record_id }}/file" target="_blank">打开/下载 PDF</a>
+      <form method="post" action="/person/{{ person }}/actions/reextract-one" class="d-inline">
+        <input type="hidden" name="record_id" value="{{ record.record_id }}" />
+        <input type="hidden" name="next" value="/person/{{ person }}/record/{{ record.record_id }}" />
+        <button class="btn btn-warning" type="submit">本地重新提取本条</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header">结构化字段</div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tr><th class="bg-light">domain</th><td>{{ record.domain }}</td></tr>
+            <tr><th class="bg-light">subdomain</th><td>{{ record.subdomain or '—' }}</td></tr>
+            <tr><th class="bg-light">患者</th><td>{{ record.patient_name or '—' }}{% if record.patient_age %} <span class="text-muted">({{ record.patient_age }})</span>{% endif %}</td></tr>
+            <tr><th class="bg-light">医生</th><td>{{ record.doctor_name or '—' }}</td></tr>
+            <tr><th class="bg-light">医院/诊所</th><td>{{ record.facility_name or '—' }}</td></tr>
+            <tr><th class="bg-light">就诊日（抽取）</th><td>{{ record.visit_date_extracted or '—' }}</td></tr>
+            <tr><th class="bg-light">就诊原因</th><td style="white-space: pre-wrap;">{{ record.visit_reason or '—' }}</td></tr>
+            <tr><th class="bg-light">症状</th><td style="white-space: pre-wrap;">{{ record.symptoms or '—' }}</td></tr>
+            <tr><th class="bg-light">处方/用药</th><td style="white-space: pre-wrap;">{{ record.prescriptions or '—' }}</td></tr>
+            <tr><th class="bg-light">详细内容</th><td style="white-space: pre-wrap;">{{ record.clinical_detail or '—' }}</td></tr>
+            <tr><th>就诊年龄（按生日计算）</th>
+              <td>
+                {% if record.visit_age_years is not none %}
+                  {{ '%.1f'|format(record.visit_age_years) }}y
+                {% else %}
+                  {{ record.visit_age_text or '' }}
+                {% endif %}
+              </td>
+            </tr>
+            <tr><th>vitals_json</th><td><pre class="chunk-text mb-0">{{ record.vitals_json or '' }}</pre></td></tr>
+            <tr><th>extracted_at</th><td>{{ record.extracted_at or '' }}</td></tr>
+            <tr><th>extraction_error</th>
+              <td class="{% if record.extraction_error %}text-danger{% endif %}">{{ record.extraction_error or '' }}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card shadow-sm">
+        <div class="card-header">来源信息</div>
+        <div class="card-body">
+          <table class="table table-sm mb-0">
+            <tr><th>record_kind</th><td>{{ record.record_kind }}</td></tr>
+            <tr><th>layer</th><td>{{ record.layer }}</td></tr>
+            <tr><th>source_system</th><td>{{ record.source_system or '' }}</td></tr>
+            <tr><th>observed_at</th><td>{{ record.observed_at or '' }}</td></tr>
+            <tr><th>imported_at</th><td>{{ record.imported_at }}</td></tr>
+            <tr><th>stored_path</th><td><code>{{ record.stored_path }}</code></td></tr>
+            <tr><th>original_path</th><td><code>{{ record.original_path }}</code></td></tr>
+            <tr><th>sensitivity_tier</th><td>{{ record.sensitivity_tier }}</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-3">
+    <div class="card-header">Chunks</div>
+    <div class="card-body">
+      {% if chunks|length == 0 %}
+        <div class="text-muted">无 chunks（可能 PDF 无可提取文本）。</div>
+      {% else %}
+        {% for c in chunks %}
+          <div class="mb-3">
+            <div class="text-muted small mb-1">chunk {{ c.chunk_index }}</div>
+            <pre class="chunk-text border rounded p-2 bg-white">{{ c.text }}</pre>
+          </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+

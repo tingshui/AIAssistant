@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>按标签浏览 — Aha! Catcher</title>
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #2563eb;
+      --border: #e5e2dc;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    h1 { font-size: 1.35rem; font-weight: 600; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    .meta { font-size: 0.82rem; color: var(--muted); margin: 0 0 1.25rem; word-break: break-all; }
+    .err-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .hint { font-size: 0.88rem; color: var(--muted); }
+    .record {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem 1.1rem;
+      margin-bottom: 1.1rem;
+    }
+    .record h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 0.35rem;
+    }
+    .record .subrow {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.65rem;
+    }
+    .record .fname { font-family: ui-monospace, monospace; font-size: 0.76rem; }
+    .details-row { margin-bottom: 0.45rem; }
+    .details-row a {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .details-row a:hover { text-decoration: underline; }
+    .transcript-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin-bottom: 0.25rem;
+    }
+    .transcript-body {
+      font-size: 0.9rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      padding: 0.65rem 0.75rem;
+      background: #faf9f7;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      max-height: 70vh;
+      overflow: auto;
+    }
+    .transcript-empty { font-size: 0.88rem; color: var(--muted); font-style: italic; }
+    nav.foot {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    nav.foot a { color: var(--accent); text-decoration: none; }
+    nav.foot a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 id="pageTitle">按标签浏览</h1>
+    <p id="metaLine" class="meta"></p>
+    <div id="banner"></div>
+    <div id="main"></div>
+    <nav class="foot">
+      <a href="map.html">← 话题地图</a>
+      ·
+      <a href="/">主应用</a>
+    </nav>
+  </div>
+  <script>
+(function () {
+  const API_BASE = "";
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function detailHref(filename, fromTag) {
+    let u = "record-detail.html?file=" + encodeURIComponent(filename);
+    if (fromTag) u += "&from_tag=" + encodeURIComponent(fromTag);
+    return u;
+  }
+
+  async function run() {
+    const params = new URLSearchParams(window.location.search);
+    const tag = (params.get("tag") || "").trim();
+    const main = document.getElementById("main");
+    const metaLine = document.getElementById("metaLine");
+    const banner = document.getElementById("banner");
+    const pageTitle = document.getElementById("pageTitle");
+
+    if (!tag) {
+      pageTitle.textContent = "按标签浏览";
+      main.innerHTML = '<p class="err-banner" style="margin:0">缺少参数 <code>tag</code>。请从<a href="map.html">话题地图</a>点击某个标签进入。</p>';
+      metaLine.textContent = "";
+      return;
+    }
+
+    pageTitle.textContent = "标签 · " + tag;
+    main.innerHTML = '<p class="hint">加载中…</p>';
+    metaLine.textContent = "";
+    banner.innerHTML = "";
+
+    let data;
+    try {
+      const res = await fetch(API_BASE + "/api/notes-by-tag?tag=" + encodeURIComponent(tag));
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      data = await res.json();
+    } catch (e) {
+      main.innerHTML = '<p class="err-banner" style="margin:0">加载失败：' + esc(String(e)) + "</p>";
+      return;
+    }
+
+    if (data.hint) {
+      banner.innerHTML = '<div class="err-banner">' + esc(data.hint) + "</div>";
+    }
+
+    metaLine.textContent =
+      "匹配条数：" +
+      (data.match_count ?? 0) +
+      " · 生成时间（UTC）：" +
+      (data.generated_at || "—");
+
+    if (!data.ideas_dirs_configured) {
+      main.innerHTML = "<p class=\"hint\">尚未配置 ideas 目录。</p>";
+      return;
+    }
+
+    const records = data.records || [];
+    if (!records.length) {
+      main.innerHTML =
+        "<p class=\"hint\">没有带此标签的笔记。换一个标签或先去主应用保存几条带 <code>" +
+        esc(tag) +
+        "</code> 的笔记。</p>";
+      return;
+    }
+
+    let html = "";
+    for (const r of records) {
+      const ttags = (r.tags && r.tags.length) ? r.tags.join(", ") : "—";
+      const trans = (r.transcript && String(r.transcript).trim()) ? String(r.transcript) : "";
+      const transBlock = trans
+        ? '<p class="transcript-label">Transcript</p><pre class="transcript-body">' + esc(trans) + "</pre>"
+        : '<p class="transcript-empty">（未解析到 ## Transcript 段落，可在 details 中查看完整文件）</p>';
+      html +=
+        '<article class="record">' +
+        "<h2>" +
+        esc(r.title || r.file) +
+        "</h2>" +
+        '<div class="subrow">' +
+        esc(r.category) +
+        " · tags: " +
+        esc(ttags) +
+        '<span class="fname"> · ' +
+        esc(r.file) +
+        "</span></div>" +
+        '<div class="details-row"><a href="' +
+        esc(detailHref(r.file, tag)) +
+        '" target="_blank" rel="noopener">details</a></div>' +
+        transBlock +
+        "</article>";
+    }
+    main.innerHTML = html;
+  }
+
+  run();
+})();
+  </script>
+</body>
+</html>

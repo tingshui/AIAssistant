@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Voice Memos → ~/Documents/VoiceMemosMirror (default; copy-only). Steps:
+  1. Copy this file to ~/Library/LaunchAgents/com.YOURNAME.sync-voice-memos-mirror.plist
+  2. Replace YOUR_HOME, YOUR_PROJECT, and the python path (use `venv/bin/python3` resolved realpath for FDA).
+  3. Optional: add --dest only if not using the default mirror folder.
+  4. System Settings → Privacy & Security → Full Disk Access → add the SAME python3 binary (+ Cursor.app if needed).
+  5. launchctl load ~/Library/LaunchAgents/com.YOURNAME.sync-voice-memos-mirror.plist
+
+  StartInterval = seconds between runs (e.g. 600 = 10 minutes).
+  ahacatcher Import reads the mirror by default (AHA_CATCHER_VOICE_MEMOS_USE_MIRROR_ONLY=1).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.YOURNAME.sync-voice-memos-mirror</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>/YOUR_HOME/Documents/AI_Projects/cursor-project/ahacatcher/scripts/sync_voice_memos_mirror.py</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/YOUR_HOME/Library/Logs/sync-voice-memos-mirror.log</string>
+    <key>StandardErrorPath</key>
+    <string>/YOUR_HOME/Library/Logs/sync-voice-memos-mirror.err.log</string>
+</dict>
+</plist>

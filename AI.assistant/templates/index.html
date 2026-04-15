@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}选择成员 - AI.assistant{% endblock %}
+
+{% block content %}
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title mb-3">选择家庭成员</h5>
+          <div class="list-group">
+            {% for p in people %}
+              <div class="list-group-item d-flex align-items-center justify-content-between">
+                <div class="fw-semibold">{{ p.key }}</div>
+                <div class="btn-group">
+                  <a class="btn btn-sm btn-primary" href="/person/{{ p.key }}/records">记录</a>
+                  <a class="btn btn-sm btn-outline-primary" href="/person/{{ p.key }}/profile">Profile</a>
+                  <a class="btn btn-sm btn-outline-primary" href="/person/{{ p.key }}/memories">Memories</a>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="text-muted small mt-3">
+            提示：首次使用可先进入某人「记录」页面，然后点「本地提取新文件」或导入 PDF（CLI）。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+

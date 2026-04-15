@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>校正分类 — Aha! Catcher</title>
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #2563eb;
+      --border: #e5e2dc;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 520px; margin: 0 auto; padding: 1.25rem 1rem 2.5rem; }
+    h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 0.35rem; }
+    .meta { font-size: 0.82rem; color: var(--muted); margin: 0 0 1rem; }
+    .card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    label { display: block; font-size: 0.88rem; font-weight: 500; margin-bottom: 0.35rem; }
+    select, input[type="password"] {
+      width: 100%;
+      font-size: 1rem;
+      padding: 0.55rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .row-actions { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+    button {
+      font-size: 0.95rem;
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .err-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.88rem;
+    }
+    .ok-banner {
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.88rem;
+    }
+    nav.foot { margin-top: 1.25rem; font-size: 0.85rem; color: var(--muted); }
+    nav.foot a { color: var(--accent); text-decoration: none; }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
+    code { font-size: 0.82em; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>校正笔记分类</h1>
+    <p id="metaLine" class="meta"></p>
+    <div id="banner"></div>
+    <div id="mainCard" class="card" hidden>
+      <label for="catSel">分类 category</label>
+      <select id="catSel" aria-label="Category"></select>
+      <div class="row-actions">
+        <button type="button" id="saveBtn">保存到本机 Ideas 文件夹</button>
+      </div>
+      <p id="tokenHint" class="hint"></p>
+    </div>
+    <nav class="foot">
+      <a href="/">主应用</a>
+      ·
+      <a href="map.html">话题地图</a>
+    </nav>
+  </div>
+  <script>
+(function () {
+  const API_BASE = "";
+
+  const LABELS = {
+    "life-daily": "life-daily — 日常 / 待办",
+    "inner": "inner — 情绪与内在",
+    "career-learning": "career-learning — 工作学习",
+    "reading": "reading — 阅读影音",
+    "pilates": "pilates — 普拉提",
+    "unsorted": "unsorted — 未归类",
+  };
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function tokenFromQuery() {
+    const p = new URLSearchParams(window.location.search);
+    return (p.get("token") || "").trim();
+  }
+
+  async function run() {
+    const params = new URLSearchParams(window.location.search);
+    const file = (params.get("file") || "").trim();
+    const banner = document.getElementById("banner");
+    const metaLine = document.getElementById("metaLine");
+    const mainCard = document.getElementById("mainCard");
+    const catSel = document.getElementById("catSel");
+    const saveBtn = document.getElementById("saveBtn");
+    const tokenHint = document.getElementById("tokenHint");
+
+    banner.innerHTML = "";
+    mainCard.hidden = true;
+
+    let pushToken = tokenFromQuery();
+    try {
+      const tStore = sessionStorage.getItem("aha_push_token");
+      if (tStore) pushToken = pushToken || tStore.trim();
+    } catch (e) { /* ignore */ }
+
+    if (!file) {
+      metaLine.textContent = "";
+      banner.innerHTML =
+        '<div class="err-banner">缺少参数 <code>file</code>。请从手机上的推送通知点入，或手动加上 <code>?file=笔记名.md</code>。</div>';
+      return;
+    }
+
+    metaLine.textContent = "加载中…";
+
+    let data;
+    try {
+      const res = await fetch(API_BASE + "/api/note-meta?file=" + encodeURIComponent(file));
+      if (res.status === 404) {
+        metaLine.textContent = "";
+        banner.innerHTML = '<div class="err-banner">未找到该笔记（请确认 .env 中 Ideas 目录与文件名）。</div>';
+        return;
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      data = await res.json();
+    } catch (e) {
+      metaLine.textContent = "";
+      banner.innerHTML = '<div class="err-banner">加载失败：' + esc(String(e)) + "</div>";
+      return;
+    }
+
+    const name = data.file || file;
+    metaLine.textContent =
+      (data.title ? esc(data.title) + " · " : "") + esc(name);
+
+    catSel.innerHTML = "";
+    const allowed = Array.isArray(data.categories_allowed) ? data.categories_allowed : [];
+    const cur = (data.category || "").trim();
+    for (let i = 0; i < allowed.length; i++) {
+      const v = allowed[i];
+      const opt = document.createElement("option");
+      opt.value = v;
+      opt.textContent = LABELS[v] || v;
+      if (v === cur) opt.selected = true;
+      catSel.appendChild(opt);
+    }
+    if (!catSel.value && allowed.length) catSel.value = allowed[0];
+
+    if (!data.push_token_configured) {
+      saveBtn.disabled = true;
+      tokenHint.innerHTML =
+        '<span class="err-banner" style="display:block;margin-top:0.5rem">服务器未配置 <code>AHA_CATCHER_PUSH_ACTION_SECRET</code>，无法在浏览器中保存。请在 Mac 的 .env 中设置后重启 uvicorn。</span>';
+    } else if (!pushToken) {
+      tokenHint.innerHTML =
+        "要在手机上<strong>写回</strong>分类，请在通知链接中带 <code>token=…</code>（与 .env 里 <code>AHA_CATCHER_PUSH_ACTION_SECRET</code> 一致），或在本页手动粘贴密钥：";
+      const manual = document.createElement("input");
+      manual.type = "password";
+      manual.placeholder = "X-Aha-Push-Token（与服务器 .env 一致）";
+      manual.autocomplete = "off";
+      manual.style.marginTop = "0.5rem";
+      tokenHint.appendChild(manual);
+      saveBtn.disabled = true;
+      manual.addEventListener("input", function () {
+        pushToken = manual.value.trim();
+        try {
+          if (pushToken) sessionStorage.setItem("aha_push_token", pushToken);
+        } catch (e) { /* ignore */ }
+        saveBtn.disabled = !pushToken;
+      });
+    } else {
+      try {
+        sessionStorage.setItem("aha_push_token", pushToken);
+      } catch (e) { /* ignore */ }
+      tokenHint.textContent = "已通过链接携带密钥；保存时会写入所有已配置的 Ideas 目录。";
+      saveBtn.disabled = false;
+    }
+
+    mainCard.hidden = false;
+
+    saveBtn.addEventListener("click", async function () {
+      const tok =
+        pushToken ||
+        (function () {
+          try {
+            return (sessionStorage.getItem("aha_push_token") || "").trim();
+          } catch (e) {
+            return "";
+          }
+        })();
+      if (!tok) {
+        banner.innerHTML = '<div class="err-banner">需要推送密钥（token）才能保存。</div>';
+        return;
+      }
+      const category = catSel.value;
+      saveBtn.disabled = true;
+      banner.innerHTML = "";
+      try {
+        const res = await fetch(API_BASE + "/api/note-category", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Aha-Push-Token": tok,
+          },
+          body: JSON.stringify({ filename: name, category: category }),
+        });
+        const out = await res.json().catch(function () {
+          return {};
+        });
+        if (!res.ok) {
+          const d = out.detail;
+          const msg = typeof d === "string" ? d : JSON.stringify(d || out);
+          throw new Error(msg);
+        }
+        banner.innerHTML =
+          '<div class="ok-banner">已更新分类为 <strong>' +
+          esc(category) +
+          "</strong>。" +
+          (out.paths && out.paths.length
+            ? "<br /><span style=\"font-size:0.85em\">" +
+              esc(out.paths.join(" · ")) +
+              "</span>"
+            : "") +
+          "</div>";
+      } catch (e) {
+        banner.innerHTML = '<div class="err-banner">保存失败：' + esc(String(e)) + "</div>";
+      } finally {
+        saveBtn.disabled = false;
+      }
+    });
+  }
+
+  run();
+})();
+  </script>
+</body>
+</html>

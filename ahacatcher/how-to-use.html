@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aha! Catcher — How to use</title>
+  <style>
+    :root {
+      --text: #1a1a18;
+      --muted: #5c5a54;
+      --border: #ddd8cf;
+      --bg: #faf9f6;
+      --accent: #2563eb;
+    }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      margin: 0;
+      padding: 1.25rem 1.5rem 2.5rem;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+      max-width: 40rem;
+      margin-inline: auto;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; }
+    .sub { color: var(--muted); font-size: 0.92rem; margin: 0 0 1.5rem; }
+    a { color: var(--accent); }
+    section {
+      margin-bottom: 1.75rem;
+    }
+    section h2 {
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.5rem;
+      font-weight: 600;
+    }
+    section h3 {
+      font-size: 0.95rem;
+      margin: 1rem 0 0.35rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+    section h3:first-of-type { margin-top: 0.35rem; }
+    pre, .cmd {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.82rem;
+      overflow-x: auto;
+      margin: 0.5rem 0 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    ul { margin: 0.4rem 0 0; padding-left: 1.2rem; }
+    li { margin: 0.25rem 0; }
+    p { margin: 0.35rem 0 0; }
+  </style>
+</head>
+<body>
+  <h1>How to use this app</h1>
+  <p class="sub">Commands assume the <strong>repository root</strong> (folder that contains <code>venv/</code> and <code>ahacatcher/</code>). Same text as <a href="how-to-use.md"><code>how-to-use.md</code></a> in this folder (offline). <a href="./">← Back to main app</a></p>
+
+  <section id="venv">
+    <h2>1. Start the Python virtual environment (venv)</h2>
+    <p>In Terminal:</p>
+    <pre>cd /path/to/cursor-project
+source venv/bin/activate</pre>
+    <p>Your prompt should show <code>(venv)</code>. To leave: <code>deactivate</code>.</p>
+    <p>You can skip <code>activate</code> if you always call tools via <code>./venv/bin/python3</code> or <code>./venv/bin/uvicorn</code> (full path).</p>
+  </section>
+
+  <section id="uvicorn">
+    <h2>2. Start the web server (uvicorn)</h2>
+    <p>Run from the <strong>repository root</strong> so imports and <code>.env</code> load correctly.</p>
+    <h3>Foreground (typical development)</h3>
+    <pre>cd /path/to/cursor-project
+./venv/bin/uvicorn ahacatcher.server:app --reload --port 8765</pre>
+    <p>LAN / phone access on the same network:</p>
+    <pre>./venv/bin/uvicorn ahacatcher.server:app --host 0.0.0.0 --reload --port 8765</pre>
+    <p>Leave this terminal window open. <strong>Server log</strong> (requests, errors) prints in this window.</p>
+    <h3>Keep running after you close the terminal (macOS)</h3>
+    <ul>
+      <li><strong>Quick:</strong> <code>nohup ./venv/bin/uvicorn ahacatcher.server:app --host 0.0.0.0 --port 8765 &gt;&gt; ~/Library/Logs/ahacatcher-uvicorn.log 2&gt;&amp;1 &amp;</code>, or use <strong>tmux</strong> / <strong>screen</strong> and detach.</li>
+      <li><strong>Persistent:</strong> use <strong>launchd</strong> — copy <code>ahacatcher/scripts/uvicorn_launchd.plist.example</code> to <code>~/Library/LaunchAgents/com.YOURNAME.ahacatcher-uvicorn.plist</code>, set <code>WorkingDirectory</code> to the repo root and <code>ProgramArguments</code> to your <code>venv/bin/uvicorn</code> (see the longer steps in <a href="README.md"><code>README.md</code></a> under <em>Run the web app</em>).</li>
+    </ul>
+    <p><strong>launchd summary:</strong> stop any uvicorn on port <strong>8765</strong> first; load with <code>launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.YOURNAME.ahacatcher-uvicorn.plist</code>; stop with <code>launchctl bootout …</code>; restart after code changes with <code>launchctl kickstart -k gui/$(id -u)/com.YOURNAME.ahacatcher-uvicorn</code>. The example plist has <strong>no <code>--reload</code></strong>.</p>
+    <p><strong>Do not</strong> start a second uvicorn in Terminal while launchd already uses <strong>8765</strong>. If Voice Memos <strong>Import</strong> fails, add the plist’s <code>venv/bin/uvicorn</code> path to <strong>Full Disk Access</strong>.</p>
+  </section>
+
+  <section id="pages">
+    <h2>3. Open the web pages</h2>
+    <p>With uvicorn running (foreground or via launchd), use your browser:</p>
+    <ul>
+      <li><strong>Main app</strong> — <a href="./">http://127.0.0.1:8765/</a> (record, transcript, save)</li>
+      <li><strong>Topic map</strong> — <a href="map.html">http://127.0.0.1:8765/map.html</a></li>
+      <li><strong>Usage metrics</strong> — <a href="metrics.html">http://127.0.0.1:8765/metrics.html</a></li>
+      <li><strong>Background monitor</strong> (sync / scan status) — <a href="background-monitor.html">http://127.0.0.1:8765/background-monitor.html</a></li>
+    </ul>
+    <p>From another device, replace <code>127.0.0.1</code> with your Mac’s LAN IP or Tailscale IP.</p>
+  </section>
+
+  <section id="history">
+    <h2>4. Check history &amp; past activity</h2>
+    <ul>
+      <li><strong>Saved notes &amp; transcripts</strong> — use <strong>Topic map</strong> (<code>map.html</code>) and open notes by tag or detail.</li>
+      <li><strong>Classifier / save usage (local)</strong> — open <strong>Usage metrics</strong> (<code>metrics.html</code>); data is stored in <code>ahacatcher/data/metrics.jsonl</code> on this Mac.</li>
+      <li><strong>Voice Memos mirror + quick-memo pipeline</strong> — open <strong>Background monitor</strong> (<code>background-monitor.html</code>) for recent sync/scan rows and quick-memo events.</li>
+    </ul>
+  </section>
+
+  <section id="logs">
+    <h2>5. Logs (web server &amp; background jobs)</h2>
+    <ul>
+      <li><strong>Uvicorn / app (foreground)</strong> — the terminal where you started uvicorn shows HTTP errors and <code>[ahacatcher]</code> stderr lines.</li>
+      <li><strong>Uvicorn (launchd)</strong> — if you set <code>StandardOutPath</code> / <code>StandardErrorPath</code> in the plist, e.g. <code>~/Library/Logs/ahacatcher-uvicorn.log</code> and <code>ahacatcher-uvicorn.err.log</code>.</li>
+      <li><strong>Other launchd jobs</strong> (optional) — e.g. <code>~/Library/Logs/voice-memos-quick-memo.log</code> and <code>voice-memos-quick-memo.err.log</code> for sync + quick-memo scan.</li>
+    </ul>
+  </section>
+</body>
+</html>

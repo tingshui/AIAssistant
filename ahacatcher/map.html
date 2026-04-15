@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>话题地图 — Aha! Catcher</title>
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #2563eb;
+      --border: #e5e2dc;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 640px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.25rem; }
+    .meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 1.25rem; word-break: break-all; }
+    .err-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .hint { font-size: 0.88rem; color: var(--muted); margin: 0 0 1rem; }
+    .cat-block { margin-bottom: 1.5rem; }
+    .cat-block h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin: 0 0 0.5rem;
+      display: flex;
+      align-items: baseline;
+      gap: 0.5rem;
+    }
+    .cat-block .count { font-weight: 500; color: var(--muted); font-size: 0.85rem; }
+    .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    a.tag {
+      font-size: 0.78rem;
+      padding: 0.15rem 0.5rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      text-decoration: none;
+      display: inline-block;
+    }
+    a.tag:hover {
+      border-color: var(--accent);
+      background: rgba(37, 99, 235, 0.06);
+    }
+    a.tag .n { color: var(--muted); margin-left: 0.25rem; }
+    details.notes { margin-top: 1.75rem; }
+    details.notes summary { cursor: pointer; font-weight: 600; color: var(--accent); }
+    .note-list { list-style: none; padding: 0; margin: 0.75rem 0 0; font-size: 0.88rem; }
+    .note-list li {
+      padding: 0.45rem 0;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 0.15rem;
+    }
+    .note-list .fname { font-family: ui-monospace, monospace; font-size: 0.8rem; color: var(--muted); }
+    .note-list .t-tags { color: var(--muted); font-size: 0.78rem; }
+    nav.foot {
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    nav.foot a { color: var(--accent); text-decoration: none; }
+    nav.foot a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>话题地图</h1>
+    <p class="sub">每次打开本页都会向服务器请求最新扫描结果（不做缓存）。笔记来自 <code>AHA_CATCHER_IDEAS_DIR</code> 中的 <code>*.md</code>（镜像目录会与主目录按文件名去重）。</p>
+    <p id="metaLine" class="meta"></p>
+    <div id="banner"></div>
+    <div id="main"></div>
+    <nav class="foot">
+      <a href="/">← 返回 Aha! Catcher</a>
+      ·
+      <a href="metrics.html">Usage metrics</a>
+    </nav>
+  </div>
+  <script>
+(function () {
+  const API_BASE = "";
+
+  const CAT_LABELS = {
+    "life-daily": "01 — Daily & life",
+    inner: "02 — Inner life",
+    "career-learning": "03 — Career & learning",
+    reading: "04 — Reading",
+    pilates: "05 — Pilates",
+    unsorted: "06 — Unsorted",
+    "(other)": "其它 / 无法解析 category",
+  };
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  function renderTagList(tagsObj) {
+    const entries = Object.entries(tagsObj || {});
+    if (!entries.length) return '<p class="hint" style="margin:0">（暂无 tags）</p>';
+    const parts = entries.map(function (pair) {
+      const tag = pair[0];
+      const n = pair[1];
+      const href = "records-by-tag.html?tag=" + encodeURIComponent(tag);
+      return (
+        '<a class="tag" href="' +
+        esc(href) +
+        '">' +
+        esc(tag) +
+        '<span class="n">×' +
+        n +
+        "</span></a>"
+      );
+    });
+    return '<div class="tags">' + parts.join("") + "</div>";
+  }
+
+  function renderBlock(catKey, block) {
+    const label = CAT_LABELS[catKey] || catKey;
+    const h =
+      '<div class="cat-block">' +
+      "<h2>" +
+      esc(label) +
+      ' <span class="count">（' +
+      block.count +
+      " 条）</span></h2>" +
+      renderTagList(block.tags) +
+      "</div>";
+    return h;
+  }
+
+  async function run() {
+    const main = document.getElementById("main");
+    const metaLine = document.getElementById("metaLine");
+    const banner = document.getElementById("banner");
+    main.innerHTML = "<p class=\"hint\">加载中…</p>";
+    metaLine.textContent = "";
+    banner.innerHTML = "";
+
+    let data;
+    try {
+      const res = await fetch(API_BASE + "/api/topics-map");
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      data = await res.json();
+    } catch (e) {
+      main.innerHTML =
+        '<p class="err-banner" style="margin:0">无法加载话题地图：' + esc(String(e)) + "</p>";
+      return;
+    }
+
+    metaLine.textContent =
+      "生成时间（UTC）：" +
+      (data.generated_at || "—") +
+      " · 扫描文件数：" +
+      (data.note_files_scanned ?? 0);
+
+    if (data.hint) {
+      banner.innerHTML = '<div class="err-banner">' + esc(data.hint) + "</div>";
+    }
+
+    if (data.parse_errors && data.parse_errors.length) {
+      banner.innerHTML +=
+        '<div class="err-banner">部分文件读取失败（' +
+        data.parse_errors.length +
+        "）：" +
+        esc(data.parse_errors.map((x) => x.file).join(", ")) +
+        "</div>";
+    }
+
+    if (!data.ideas_dirs_configured) {
+      main.innerHTML = "<p class=\"hint\">尚未配置ideas目录，无法列出笔记。</p>";
+      return;
+    }
+
+    const order = ["life-daily", "inner", "career-learning", "reading", "pilates", "unsorted", "(other)"];
+    let html = "";
+    for (const k of order) {
+      const block = data.by_category[k];
+      if (!block || block.count === 0) continue;
+      html += renderBlock(k, block);
+    }
+
+    const globalTags = data.tag_counts || {};
+    if (Object.keys(globalTags).length) {
+      html += '<div class="cat-block"><h2>全部 tags 汇总</h2>' + renderTagList(globalTags) + "</div>";
+    }
+
+    if (!html) {
+      html = '<p class="hint">当前目录下还没有可用的 Aha Catcher 笔记（或均为空）。保存几条后再试。</p>';
+    }
+
+    const notes = data.notes || [];
+    if (notes.length) {
+      html +=
+        '<details class="notes"><summary>全部笔记列表（' +
+        notes.length +
+        "）</summary><ul class=\"note-list\">";
+      for (const n of notes) {
+        const tagStr = (n.tags && n.tags.length) ? n.tags.join(", ") : "—";
+        html +=
+          "<li><strong>" +
+          esc(n.title || n.file) +
+          "</strong> · " +
+          esc(n.category) +
+          '<span class="fname">' +
+          esc(n.file) +
+          "</span>" +
+          '<span class="t-tags">tags: ' +
+          esc(tagStr) +
+          "</span></li>";
+      }
+      html += "</ul></details>";
+    }
+
+    main.innerHTML = html;
+  }
+
+  run();
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+{% block title %}记录 - {{ person }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-0">记录</h4>
+      <div class="text-muted small">成员：{{ person }}</div>
+    </div>
+    <div class="d-flex gap-2">
+      {% if domain_filter == 'health' %}
+        <a class="btn btn-outline-secondary" href="/person/{{ person }}/vitals">生命体征</a>
+        <form method="post" action="/person/{{ person }}/actions/reextract-all" class="d-inline">
+          <input type="hidden" name="domain" value="{{ domain_filter }}" />
+          <input type="hidden" name="next" value="/person/{{ person }}/records?domain={{ domain_filter }}" />
+          <button class="btn btn-warning" type="submit">本地重新提取全部</button>
+        </form>
+      {% endif %}
+      {% if domain_filter and domain_filter != 'all' %}
+        <form method="post" action="/person/{{ person }}/actions/import-new-files" class="d-inline">
+          <input type="hidden" name="next" value="/person/{{ person }}/records?domain={{ domain_filter }}" />
+          <button class="btn btn-outline-primary" type="submit">本地提取新文件</button>
+        </form>
+        <form method="post" action="/person/{{ person }}/actions/sync-files" class="d-inline">
+          <input type="hidden" name="next" value="/person/{{ person }}/records?domain={{ domain_filter }}" />
+          <button class="btn btn-outline-danger" type="submit">同步磁盘</button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+
+  <ul class="nav nav-pills mb-3">
+    {% for d in domains %}
+      {% set active = (d == domain_filter) %}
+      <li class="nav-item">
+        <a class="nav-link {% if active %}active{% endif %}" href="/person/{{ person }}/records?domain={{ d }}">{{ '全部' if d=='all' else d }}</a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <div class="card shadow-sm">
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>时间</th>
+            <th>domain</th>
+            <th>subdomain</th>
+            <th>record_kind</th>
+            <th>layer</th>
+            <th>source_system</th>
+            <th>就诊年龄</th>
+            {% if domain_filter == 'health' %}
+              <th>就诊日期</th>
+              <th>患者</th>
+              <th>医生</th>
+              <th>机构</th>
+              <th>症状</th>
+              <th>处方/用药</th>
+              <th>详细内容</th>
+            {% endif %}
+            <th>标题</th>
+            <th>抽取错误摘要</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in records %}
+            <tr>
+              <td class="text-nowrap">{{ r.observed_at or r.imported_at }}</td>
+              <td class="text-nowrap">{{ r.domain }}</td>
+              <td class="text-nowrap">{{ r.subdomain or '' }}</td>
+              <td class="text-nowrap">{{ r.record_kind }}</td>
+              <td class="text-nowrap">{{ r.layer }}</td>
+              <td class="text-nowrap">{{ r.source_system or '' }}</td>
+              <td class="text-nowrap">
+                {% if r.visit_age_years is not none %}
+                  {{ '%.1f'|format(r.visit_age_years) }}y
+                {% else %}
+                  {{ r.visit_age_text or '' }}
+                {% endif %}
+              </td>
+              {% if domain_filter == 'health' %}
+                <td class="text-nowrap">{{ r.visit_date_extracted or '' }}</td>
+                <td class="text-nowrap text-truncate" style="max-width: 120px;">{{ r.patient_name or '' }}</td>
+                <td class="text-nowrap text-truncate" style="max-width: 140px;">{{ r.doctor_name or '' }}</td>
+                <td class="text-nowrap text-truncate" style="max-width: 160px;">{{ r.facility_name or '' }}</td>
+                <td class="text-truncate" style="max-width: 200px;" title="{{ r.symptoms or '' }}">
+                  {% if r.symptoms %}
+                    {{ r.symptoms[:60] }}{% if r.symptoms|length > 60 %}…{% endif %}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="text-truncate" style="max-width: 200px;" title="{{ r.prescriptions or '' }}">
+                  {% if r.prescriptions %}
+                    {{ r.prescriptions[:60] }}{% if r.prescriptions|length > 60 %}…{% endif %}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="text-truncate" style="max-width: 240px;" title="{{ r.clinical_detail or '' }}">
+                  {% if r.clinical_detail %}
+                    {{ r.clinical_detail[:80] }}{% if r.clinical_detail|length > 80 %}…{% endif %}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              {% endif %}
+              <td class="text-truncate" style="max-width: 260px;">
+                {{ r.visit_reason or r.facility_name or r.doctor_name or r.patient_name or r.record_kind }}
+              </td>
+              <td class="{% if r.extraction_error %}text-danger{% else %}text-muted{% endif %} text-truncate" style="max-width: 280px;" title="{{ r.extraction_error or '' }}">
+                {% if r.extraction_error %}
+                  {{ r.extraction_error[:36] }}{% if r.extraction_error|length > 36 %}…{% endif %}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td class="text-nowrap text-end">
+                <a class="btn btn-sm btn-outline-secondary" href="/person/{{ person }}/record/{{ r.record_id }}">详情</a>
+              </td>
+            </tr>
+          {% endfor %}
+          {% if records|length == 0 %}
+            <tr>
+              <td colspan="{% if domain_filter == 'health' %}17{% else %}10{% endif %}" class="text-muted p-4 text-center">暂无记录</td>
+            </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+

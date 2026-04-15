@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Memories - {{ person }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-0">Memories</h4>
+      <div class="text-muted small">成员：{{ person }}</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="/person/{{ person }}/records">返回记录</a>
+  </div>
+
+  <div class="card shadow-sm mb-3">
+    <div class="card-header">Travel Preferences（存于 Profile）</div>
+    <div class="card-body">
+      <table class="table align-middle mb-0">
+        <thead class="table-light">
+          <tr><th style="width:220px;">字段</th><th>值</th><th style="width:220px;"></th></tr>
+        </thead>
+        <tbody>
+          {% for field, label in [
+            ('hotel_preference', 'Hotel Preference'),
+            ('airline_preference', 'Airline Preference'),
+            ('travel_place_preference', 'Travel Place Preference'),
+            ('things_to_do_preference', 'Things to do Preference')
+          ] %}
+            <tr data-field="{{ field }}">
+              <td class="fw-semibold">{{ label }}</td>
+              <td>
+                <div class="view"><div class="text-muted" style="white-space: pre-wrap;">{{ profile.get(field, '') }}</div></div>
+                <div class="edit d-none"><textarea class="form-control" rows="2">{{ profile.get(field, '') }}</textarea></div>
+              </td>
+              <td class="text-end">
+                <div class="view"><button class="btn btn-sm btn-outline-primary btn-edit" type="button">Edit</button></div>
+                <div class="edit d-none">
+                  <form method="post" action="/person/{{ person }}/profile/field" class="d-inline">
+                    <input type="hidden" name="field" value="{{ field }}" />
+                    <input type="hidden" name="next" value="/person/{{ person }}/memories" />
+                    <input type="hidden" name="value" value="" />
+                    <button class="btn btn-sm btn-success btn-save" type="submit">Save</button>
+                  </form>
+                  <button class="btn btn-sm btn-outline-secondary btn-cancel" type="button">Cancel</button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-header">动态记忆（候选→确认→作废/归档）</div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>status</th>
+              <th>type</th>
+              <th>domain</th>
+              <th>content</th>
+              <th class="text-end">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in memories %}
+              <tr>
+                <td class="text-nowrap">{{ m.status }}</td>
+                <td class="text-nowrap">{{ m.memory_type }}</td>
+                <td class="text-nowrap">{{ m.domain or '' }}</td>
+                <td style="white-space: pre-wrap;">{{ m.content }}</td>
+                <td class="text-nowrap text-end">
+                  <form method="post" action="/person/{{ person }}/memories/{{ m.memory_id }}/status" class="d-inline">
+                    <input type="hidden" name="next" value="/person/{{ person }}/memories" />
+                    <input type="hidden" name="status" value="active" />
+                    <button class="btn btn-sm btn-outline-success">确认</button>
+                  </form>
+                  <form method="post" action="/person/{{ person }}/memories/{{ m.memory_id }}/status" class="d-inline">
+                    <input type="hidden" name="next" value="/person/{{ person }}/memories" />
+                    <input type="hidden" name="status" value="outdated" />
+                    <button class="btn btn-sm btn-outline-secondary">作废</button>
+                  </form>
+                  <form method="post" action="/person/{{ person }}/memories/{{ m.memory_id }}/status" class="d-inline">
+                    <input type="hidden" name="next" value="/person/{{ person }}/memories" />
+                    <input type="hidden" name="status" value="archived" />
+                    <button class="btn btn-sm btn-outline-dark">归档</button>
+                  </form>
+                  <form method="post" action="/person/{{ person }}/memories/{{ m.memory_id }}/status" class="d-inline">
+                    <input type="hidden" name="next" value="/person/{{ person }}/memories" />
+                    <input type="hidden" name="status" value="tentative" />
+                    <button class="btn btn-sm btn-outline-primary">恢复候选</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+            {% if memories|length == 0 %}
+              <tr><td colspan="5" class="text-muted p-4 text-center">暂无 memories</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    function showEdit(tr, on) {
+      tr.querySelector(".view").classList.toggle("d-none", on);
+      tr.querySelector(".edit").classList.toggle("d-none", !on);
+    }
+    for (const tr of document.querySelectorAll("tr[data-field]")) {
+      const btnEdit = tr.querySelector(".btn-edit");
+      const btnCancel = tr.querySelector(".btn-cancel");
+      const form = tr.querySelector("form");
+      const textarea = tr.querySelector("textarea");
+      const hiddenValue = form ? form.querySelector("input[name=value]") : null;
+      if (btnEdit) btnEdit.addEventListener("click", () => showEdit(tr, true));
+      if (btnCancel) btnCancel.addEventListener("click", () => showEdit(tr, false));
+      if (form) form.addEventListener("submit", () => { if (hiddenValue) hiddenValue.value = textarea.value; });
+    }
+  </script>
+{% endblock %}
+

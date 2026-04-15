@@ -1,0 +1,1897 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aha! Catcher — MVP</title>
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --border: #e5e2dc;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 3rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0 0 0.25rem;
+      letter-spacing: -0.02em;
+    }
+    .sub {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin: 0 0 1.75rem;
+    }
+    #captureBtn {
+      width: 100%;
+      padding: 1.1rem 1.25rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    #captureBtn:hover:not(:disabled) { background: var(--accent-hover); }
+    #captureBtn.recording {
+      background: #dc2626;
+    }
+    #captureBtn.recording:hover:not(:disabled) {
+      background: #b91c1c;
+    }
+    #captureBtn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    #replayBtn {
+      width: 100%;
+      margin-top: 0.65rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent);
+      background: transparent;
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    #replayBtn:hover:not(:disabled) {
+      background: rgba(37, 99, 235, 0.08);
+    }
+    #replayBtn:disabled,
+    #fetchSummaryBtn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    #fetchSummaryBtn {
+      width: 100%;
+      margin-top: 0.65rem;
+      padding: 0.85rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #fff;
+      background: #0d9488;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s ease, opacity 0.15s ease;
+    }
+    #fetchSummaryBtn .icon {
+      flex-shrink: 0;
+      opacity: 0.95;
+    }
+    #fetchSummaryBtn:hover:not(:disabled) {
+      background: #0f766e;
+    }
+    #fetchSummaryBtn.is-done {
+      background: var(--muted);
+      cursor: default;
+    }
+    #status {
+      margin-top: 0.85rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-height: 1.25em;
+    }
+    #results {
+      margin-top: 1.5rem;
+    }
+    .result-block {
+      margin-bottom: 1.25rem;
+    }
+    .result-block:last-child { margin-bottom: 0; }
+    .result-block h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.5rem;
+      font-weight: 600;
+    }
+    .result-body {
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding: 0.85rem 1rem;
+      background: var(--bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    .error {
+      color: #b91c1c;
+      font-size: 0.9rem;
+      padding: 0.75rem 1rem;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+    }
+    .conversation-panel {
+      margin-top: 1.25rem;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .conversation-panel h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 1rem;
+      font-weight: 600;
+    }
+    .conv-turn {
+      margin-bottom: 1rem;
+    }
+    .conv-turn:last-child {
+      margin-bottom: 0;
+    }
+    .conv-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .conv-bubble {
+      font-size: 0.95rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+      padding: 0.75rem 0.9rem;
+      border-radius: 10px;
+      line-height: 1.45;
+    }
+    .conv-you {
+      background: #e8eefc;
+      border: 1px solid #c7d7f4;
+    }
+    .conv-ai {
+      background: #f0fdf9;
+      border: 1px solid #b4e8dc;
+    }
+    .save-panel {
+      margin-top: 1.25rem;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+    }
+    .save-panel h2 {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin: 0 0 0.5rem;
+      font-weight: 600;
+    }
+    .save-hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin: 0 0 0.85rem;
+      line-height: 1.45;
+    }
+    .save-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .save-actions button {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+    }
+    .save-actions button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    #downloadMdBtn {
+      color: var(--text);
+      background: #fff;
+      border: 2px solid var(--border);
+    }
+    #downloadMdBtn:hover:not(:disabled) {
+      border-color: #c4bfb6;
+      background: #faf9f7;
+    }
+    #saveAsMdBtn {
+      color: var(--accent);
+      background: #fff;
+      border: 2px solid var(--accent);
+    }
+    #saveAsMdBtn:hover:not(:disabled) {
+      background: rgba(37, 99, 235, 0.06);
+    }
+    #serverSaveBtn {
+      color: #fff;
+      background: #1e293b;
+      border: none;
+    }
+    #serverSaveBtn:hover:not(:disabled) {
+      background: #0f172a;
+    }
+    #saveStatus {
+      margin: 0.65rem 0 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+      min-height: 1.25em;
+      word-break: break-word;
+    }
+    .auto-save-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      margin: 0 0 0.85rem;
+      padding: 0.65rem 0.75rem;
+      background: #f8f7f4;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.9rem;
+      line-height: 1.45;
+    }
+    .auto-save-row input[type="checkbox"] {
+      margin-top: 0.2rem;
+      width: 1.15rem;
+      height: 1.15rem;
+      accent-color: var(--accent);
+      flex-shrink: 0;
+    }
+    .auto-save-row label {
+      cursor: pointer;
+      color: var(--text);
+      margin: 0;
+    }
+    .auto-save-row .auto-save-detail {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-top: 0.35rem;
+      font-weight: 400;
+    }
+    .category-row {
+      margin: 0 0 0.85rem;
+    }
+    .category-row label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+    .category-row select {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+    }
+    .extra-tags-row {
+      margin: 0 0 0.85rem;
+    }
+    .extra-tags-row label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+    .extra-tags-row input[type="text"] {
+      width: 100%;
+      padding: 0.55rem 0.65rem;
+      font-size: 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+    }
+    .extra-tags-row .extra-tags-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin: 0.35rem 0 0;
+      line-height: 1.4;
+    }
+    .classify-viz {
+      margin: 0 0 1rem;
+      padding: 0.75rem 0.85rem;
+      background: #f0f4fa;
+      border: 1px solid #c5d4e8;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      line-height: 1.5;
+      color: var(--text);
+    }
+    .classify-viz[hidden] {
+      display: none !important;
+    }
+    .classify-viz h3 {
+      margin: 0 0 0.45rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .classify-viz .classify-viz-why {
+      margin: 0 0 0.5rem;
+    }
+    .classify-viz .classify-viz-meta {
+      margin: 0;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .metrics-strip {
+      margin: 0 0 1rem;
+      padding: 0.65rem 0.75rem;
+      background: #eef6f0;
+      border: 1px solid #b8d4c4;
+      border-radius: 8px;
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+    .metrics-strip[hidden] {
+      display: none !important;
+    }
+    .metrics-strip strong {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+    .metrics-strip a {
+      color: var(--accent);
+      margin-right: 0.75rem;
+    }
+    .metrics-strip .metrics-refresh {
+      font-size: 0.8rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      color: var(--text);
+    }
+    .metrics-strip .metrics-refresh:hover {
+      background: #f5f3ef;
+    }
+    .app-footer {
+      margin-top: 2rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--border);
+    }
+    .app-footer-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+    }
+    .app-footer-btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--accent);
+      background: transparent;
+      border: 2px solid var(--accent);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .app-footer-btn:hover {
+      background: rgba(37, 99, 235, 0.08);
+    }
+    .vm-import-block {
+      margin: 0 0 1rem;
+    }
+    #vmImportBtn {
+      width: 100%;
+      padding: 1.1rem 1.25rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.15s ease, box-shadow 0.15s ease;
+    }
+    #vmImportBtn:hover {
+      background: var(--accent-hover);
+    }
+    #vmImportBtn[aria-expanded="true"] {
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.35);
+    }
+    .vm-import-hint {
+      margin: 0.5rem 0 0;
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .vm-import-hint code {
+      font-size: 0.84em;
+    }
+    .vm-import-panel {
+      margin: 0 0 1.25rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #faf8f5;
+      max-width: 40rem;
+    }
+    .vm-import-panel label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.45rem;
+      color: var(--text);
+    }
+    .vm-import-row {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .vm-import-row select {
+      flex: 1;
+      min-width: 12rem;
+      padding: 0.45rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 0.9rem;
+    }
+    .vm-import-row button {
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.88rem;
+    }
+    .vm-import-row button:hover {
+      background: #f5f3ef;
+    }
+    .vm-import-status {
+      margin: 0.5rem 0 0.65rem;
+      font-size: 0.85rem;
+      color: var(--muted);
+      min-height: 1.2em;
+    }
+    .vm-import-status.vm-permission-warn {
+      color: #9a3412;
+      font-weight: 600;
+    }
+    .vm-conversation-btn {
+      padding: 0.55rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .vm-conversation-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .vm-conversation-btn:not(:disabled):hover {
+      filter: brightness(1.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Aha! Catcher</h1>
+    <p class="sub">Tap <strong>Capture Aha!</strong> to record; <strong>Stop &amp; capture</strong> transcribes only. Replay and read the transcript, then <strong>Get research summary</strong>. Scroll down for <strong>Conversation</strong> and, at the bottom, <strong>Save note</strong> (export unlocks after a successful transcript).</p>
+    <div class="vm-import-block">
+      <button
+        type="button"
+        id="vmImportBtn"
+        aria-expanded="false"
+        aria-controls="vmImportPanel"
+      >
+        Import
+      </button>
+      <p class="vm-import-hint">
+        从本机镜像目录选一条录音（默认 <code>~/Documents/VoiceMemosMirror</code>，由 <code>sync_voice_memos_mirror.py</code> 从「语音备忘录」同步；无需给浏览器读系统库权限）。展开后在下拉里选择并点 Conversation。
+      </p>
+    </div>
+    <div id="vmImportPanel" class="vm-import-panel" hidden>
+      <label for="vmSelect">选择镜像中的录音（Voice Memos → VoiceMemosMirror）</label>
+      <div class="vm-import-row">
+        <select id="vmSelect" aria-label="语音备忘录录音列表">
+          <option value="">— 打开上方 Import 或点击刷新 —</option>
+        </select>
+        <button type="button" id="vmRefreshBtn">刷新列表</button>
+      </div>
+      <p id="vmImportStatus" class="vm-import-status"></p>
+      <button type="button" id="vmConversationBtn" class="vm-conversation-btn" disabled title="转写所选录音并填入下方 Conversation（与 Stop &amp; capture 相同流程）">
+        Conversation
+      </button>
+    </div>
+
+    <button type="button" id="captureBtn">Capture Aha!</button>
+    <button type="button" id="replayBtn">Replay recording</button>
+    <button type="button" id="fetchSummaryBtn" disabled title="After you review transcript and replay, click to fetch the AI research summary">
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span>Get research summary</span>
+      <svg class="icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 016 6c0 3.5-2.24 6.5-5.52 7.58L12 21l-.48-4.42C8.24 15.5 6 12.5 6 9a6 6 0 016-6z"/><path d="M12 9v4M12 7.5h.01"/></svg>
+    </button>
+    <p id="status"></p>
+    <div id="results"></div>
+    <div id="conversationWrap" class="conversation-panel">
+      <h2>Conversation</h2>
+      <div class="conv-turn">
+        <div class="conv-label">You (from voice)</div>
+        <div class="conv-bubble conv-you" id="conversationUserBody"></div>
+      </div>
+      <div class="conv-turn">
+        <div class="conv-label">Aha! Assistant</div>
+        <div class="conv-bubble conv-ai" id="conversationAiBody"></div>
+      </div>
+    </div>
+    <div id="savePanel" class="save-panel">
+      <h2>Save note</h2>
+      <p class="save-hint">
+        Exports <strong>Markdown</strong> with optional <strong>YAML frontmatter</strong>
+        (transcript plus research summary if you fetched it). Buttons stay disabled until a transcript is ready.
+        After each transcript, the server runs <strong>/api/classify</strong> to set <strong>category</strong>,
+        <strong>extra tags</strong>, and (for Reading) <strong>book/source</strong> or <code>unknown</code>.
+        With the <strong>local server</strong> and <code>.env</code> folders set, each capture can
+        <strong>auto-save</strong> the same file to <strong>iCloud + local</strong> (see README). Use the
+        checkbox below to turn that on or off (saved in this browser). Otherwise use
+        <strong>Save as…</strong> / <strong>Download</strong> — browsers cannot write to disk silently.
+      </p>
+      <div id="metricsStrip" class="metrics-strip" hidden>
+        <strong>Usage &amp; implicit accuracy (local)</strong>
+        <span id="metricsStripBody">Loading…</span>
+        <div style="margin-top:0.45rem">
+          <a href="metrics.html">Full tables</a>
+          <button type="button" class="metrics-refresh" id="metricsRefreshBtn">Refresh</button>
+        </div>
+      </div>
+      <div class="category-row">
+        <label for="noteCategory">Note category</label>
+        <select id="noteCategory" aria-label="Note category for YAML frontmatter">
+          <option value="life-daily">01 — Daily &amp; life (shopping, to-do, reminders)</option>
+          <option value="inner">02 — Inner life &amp; feelings (e.g. after therapy)</option>
+          <option value="career-learning">03 — Career &amp; learning (work, study, social topics)</option>
+          <option value="reading">04 — Reading notes (books)</option>
+          <option value="pilates">05 — Pilates (classes, studio, mat / reformer)</option>
+          <option value="unsorted" selected>06 — Unsorted (doesn’t fit the five above yet)</option>
+        </select>
+      </div>
+      <div id="classifyViz" class="classify-viz" hidden>
+        <h3>How it was classified</h3>
+        <p id="classifyVizWhy" class="classify-viz-why"></p>
+        <p id="classifyVizMeta" class="classify-viz-meta"></p>
+      </div>
+      <div id="readingSourceRow" class="extra-tags-row" hidden>
+        <label for="readingSourceInput">Book or source</label>
+        <input
+          type="text"
+          id="readingSourceInput"
+          name="readingSource"
+          autocomplete="off"
+          placeholder="Book title, author, URL, article, podcast…"
+          aria-describedby="readingSourceHint"
+        />
+        <p id="readingSourceHint" class="extra-tags-hint">
+          Shown when <strong>04 — Reading</strong> is selected. Written to YAML as <code>source:</code> (the work you were reading). App capture tool is recorded separately as <code>origin:</code>.
+        </p>
+      </div>
+      <div class="extra-tags-row">
+        <label for="extraTagsInput">Extra tags (cross-category search)</label>
+        <input
+          type="text"
+          id="extraTagsInput"
+          name="extraTags"
+          autocomplete="off"
+          placeholder="e.g. therapy, atomic-habits, instagram-draft"
+          aria-describedby="extraTagsHint"
+        />
+        <p id="extraTagsHint" class="extra-tags-hint">
+          Comma-separated. Merged into YAML <code>tags</code> together with <code>ahacatcher</code> / <code>transcript</code>.
+          Use the same labels across folders to find everything in one search.
+        </p>
+      </div>
+      <div id="autoSaveRow" class="auto-save-row" hidden>
+        <input type="checkbox" id="autoSaveToggle" />
+        <label for="autoSaveToggle">
+          Auto-save to server folders
+          <span class="auto-save-detail">Runs after transcript and again after research summary (same filename). Only when this app is served from your local server with folders configured in <code>.env</code>.</span>
+        </label>
+      </div>
+      <div class="save-actions">
+        <button type="button" id="downloadMdBtn" disabled>Download .md</button>
+        <button type="button" id="saveAsMdBtn" disabled>Save as…</button>
+        <button type="button" id="serverSaveBtn" hidden>Save on this Mac (server folder)</button>
+      </div>
+      <p id="saveStatus"></p>
+    </div>
+
+    <nav class="app-footer" aria-label="相关页面">
+      <div class="app-footer-actions">
+        <button type="button" class="app-footer-btn" id="footerHowToBtn">How to use</button>
+        <button type="button" class="app-footer-btn" id="footerMapBtn">话题地图</button>
+        <button type="button" class="app-footer-btn" id="footerMetricsBtn">Usage metrics</button>
+        <button type="button" class="app-footer-btn" id="footerBackgroundBtn">Background monitor</button>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+(function () {
+  /** Same origin as this page (FastAPI serves static + /api/*). */
+  const API_BASE = "";
+
+  const captureBtn = document.getElementById("captureBtn");
+  const replayBtn = document.getElementById("replayBtn");
+  const statusEl = document.getElementById("status");
+  const resultsEl = document.getElementById("results");
+  const conversationWrap = document.getElementById("conversationWrap");
+  const conversationUserBody = document.getElementById("conversationUserBody");
+  const conversationAiBody = document.getElementById("conversationAiBody");
+  const fetchSummaryBtn = document.getElementById("fetchSummaryBtn");
+  const savePanel = document.getElementById("savePanel");
+  const downloadMdBtn = document.getElementById("downloadMdBtn");
+  const saveAsMdBtn = document.getElementById("saveAsMdBtn");
+  const serverSaveBtn = document.getElementById("serverSaveBtn");
+  const saveStatusEl = document.getElementById("saveStatus");
+  const autoSaveRow = document.getElementById("autoSaveRow");
+  const autoSaveToggle = document.getElementById("autoSaveToggle");
+  const noteCategorySelect = document.getElementById("noteCategory");
+  const extraTagsInput = document.getElementById("extraTagsInput");
+  const readingSourceRow = document.getElementById("readingSourceRow");
+  const readingSourceInput = document.getElementById("readingSourceInput");
+  const classifyViz = document.getElementById("classifyViz");
+  const classifyVizWhy = document.getElementById("classifyVizWhy");
+  const classifyVizMeta = document.getElementById("classifyVizMeta");
+  const LS_AUTO_SAVE = "ahacatcher_auto_save";
+  const LS_NOTE_CATEGORY = "ahacatcher_note_category";
+  const LS_EXTRA_TAGS = "ahacatcher_extra_tags_input";
+  const LS_READING_SOURCE = "ahacatcher_reading_source_input";
+  const NOTE_CATEGORY_VALUES = new Set([
+    "life-daily",
+    "inner",
+    "career-learning",
+    "reading",
+    "pilates",
+    "unsorted",
+  ]);
+
+  function syncNoteCategoryFromStorage() {
+    if (!noteCategorySelect) return;
+    const raw = localStorage.getItem(LS_NOTE_CATEGORY);
+    if (raw && NOTE_CATEGORY_VALUES.has(raw)) {
+      noteCategorySelect.value = raw;
+    }
+  }
+
+  function syncExtraTagsFromStorage() {
+    if (!extraTagsInput) return;
+    const raw = localStorage.getItem(LS_EXTRA_TAGS);
+    if (raw != null) {
+      extraTagsInput.value = raw;
+    }
+  }
+
+  function syncReadingSourceFromStorage() {
+    if (!readingSourceInput) return;
+    const raw = localStorage.getItem(LS_READING_SOURCE);
+    if (raw != null) {
+      readingSourceInput.value = raw;
+    }
+  }
+
+  function syncReadingSourceVisibility() {
+    if (!readingSourceRow || !noteCategorySelect) return;
+    readingSourceRow.hidden = noteCategorySelect.value !== "reading";
+  }
+
+  /** Split comma-separated user tags; trim; de-dupe case-insensitively within the list. */
+  function parseExtraTagsFromInput(raw) {
+    if (!raw || !String(raw).trim()) return [];
+    const seen = new Set();
+    const out = [];
+    for (const part of String(raw).split(",")) {
+      const t = part.trim();
+      if (!t) continue;
+      const key = t.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(t);
+    }
+    return out;
+  }
+
+  /** Safe single token for inline YAML list (quote if needed). */
+  function yamlTagToken(t) {
+    if (/^[a-zA-Z0-9_-]+$/.test(t)) return t;
+    return yamlDoubleQuoted(t);
+  }
+
+  function mergeAllTags(baseList, extraList) {
+    const seen = new Set(baseList.map((x) => String(x).toLowerCase()));
+    const out = baseList.slice();
+    for (const t of extraList) {
+      const k = String(t).toLowerCase();
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push(t);
+      }
+    }
+    return out;
+  }
+
+  /** WAV blob from the last successful Capture (same bytes sent to the API). */
+  let lastWavBlob = null;
+  let replayAudio = null;
+  let replayObjectUrl = null;
+
+  /** Manual record: append mono Float32 chunks while isRecording is true. */
+  let audioContext = null;
+  let mediaStream = null;
+  let processor = null;
+  let sourceNode = null;
+  let initError = null;
+  let isRecording = false;
+  let recordChunks = [];
+  /** True while upload + transcribe runs after Stop & capture. */
+  let transcribeBusy = false;
+  /** True while /api/research runs from the summary button. */
+  let summaryBusy = false;
+  /** POST /api/save-note available (AHA_CATCHER_IDEAS_DIR on server). */
+  let serverSaveAvailable = false;
+  /** From /api/config: save after transcript (and again after summary) without clicking. */
+  let serverAutoSave = false;
+  /** True while POST /api/save-note is in flight. */
+  let serverSaveBusy = false;
+  /** Summary already shown for current transcript; button greyed until new clip. */
+  let summaryLoaded = false;
+  /** Bumped when starting a new recording so stale summary responses are ignored. */
+  let workSession = 0;
+  /** Last transcript from speech recognition. */
+  let lastTranscript = null;
+  /** Assistant research summary text after user taps Get research summary. */
+  let lastSummaryText = "";
+  /** Stable .md basename for this clip (auto-save + manual re-save). */
+  let lastNoteBasename = null;
+  /** ISO timestamp for YAML `created` (set when transcript is first ready). */
+  let lastNoteCreatedIso = null;
+  /** Server logs metrics to JSONL when enabled (`/api/config` → metrics_enabled). */
+  let metricsEnabled = false;
+  /** Category from last successful /api/classify for this recording session. */
+  let metricsSessionPredicted = null;
+  let metricsClassifySucceeded = false;
+
+  const metricsStrip = document.getElementById("metricsStrip");
+  const metricsStripBody = document.getElementById("metricsStripBody");
+  const metricsRefreshBtn = document.getElementById("metricsRefreshBtn");
+  const vmImportBtn = document.getElementById("vmImportBtn");
+  const vmImportPanel = document.getElementById("vmImportPanel");
+  const vmSelect = document.getElementById("vmSelect");
+  const vmRefreshBtn = document.getElementById("vmRefreshBtn");
+  const vmImportStatus = document.getElementById("vmImportStatus");
+  const vmConversationBtn = document.getElementById("vmConversationBtn");
+
+  function syncVmConversationBtn() {
+    if (!vmConversationBtn || !vmSelect) return;
+    vmConversationBtn.disabled = !vmSelect.value || transcribeBusy || isRecording;
+  }
+
+  function clearClassifyViz() {
+    if (!classifyViz || !classifyVizWhy || !classifyVizMeta) return;
+    classifyViz.hidden = true;
+    classifyVizWhy.textContent = "";
+    classifyVizMeta.textContent = "";
+  }
+
+  function resetForNewRecording() {
+    workSession += 1;
+    lastTranscript = null;
+    lastSummaryText = "";
+    lastNoteBasename = null;
+    lastNoteCreatedIso = null;
+    summaryLoaded = false;
+    conversationUserBody.textContent = "";
+    conversationAiBody.textContent = "";
+    fetchSummaryBtn.classList.remove("is-done");
+    fetchSummaryBtn.disabled = true;
+    fetchSummaryBtn.querySelector("span").textContent = "Get research summary";
+    saveStatusEl.textContent = "";
+    clearClassifyViz();
+    metricsSessionPredicted = null;
+    metricsClassifySucceeded = false;
+  }
+
+  async function reportMetricsClassify(category, model) {
+    if (!metricsEnabled || !NOTE_CATEGORY_VALUES.has(category)) return;
+    try {
+      await fetch(`${API_BASE}/api/metrics/record`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event: "classify", category, model: model || null }),
+      });
+    } catch (e) {
+      console.warn("[ahacatcher] metrics classify:", e);
+    }
+  }
+
+  async function reportMetricsResearch() {
+    if (!metricsEnabled) return;
+    try {
+      await fetch(`${API_BASE}/api/metrics/record`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event: "research_ok" }),
+      });
+    } catch (e) {
+      console.warn("[ahacatcher] metrics research:", e);
+    }
+  }
+
+  async function reportNoteSaved(channel, passLabel) {
+    if (!metricsEnabled || !noteCategorySelect || !hasTranscriptForSave()) return;
+    const final = noteCategorySelect.value;
+    if (!NOTE_CATEGORY_VALUES.has(final)) return;
+    const predicted = metricsClassifySucceeded ? metricsSessionPredicted : null;
+    const user_changed = !!(metricsClassifySucceeded && predicted != null && predicted !== final);
+    try {
+      await fetch(`${API_BASE}/api/metrics/record`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          event: "note_saved",
+          session: workSession,
+          pass_label: passLabel || "unknown",
+          channel,
+          predicted_category: predicted,
+          final_category: final,
+          user_changed,
+          classify_succeeded: metricsClassifySucceeded,
+          has_summary: !!summaryLoaded,
+        }),
+      });
+    } catch (e) {
+      console.warn("[ahacatcher] metrics note_saved:", e);
+    }
+    refreshMetricsStrip();
+  }
+
+  async function refreshMetricsStrip() {
+    if (!metricsStrip || !metricsStripBody || !metricsEnabled) return;
+    metricsStrip.hidden = false;
+    try {
+      const res = await fetch(`${API_BASE}/api/metrics/summary`);
+      const s = await res.json();
+      if (!s.enabled) {
+        metricsStripBody.textContent = "Metrics unavailable on server.";
+        return;
+      }
+      const ev = s.evaluation || {};
+      const rate =
+        ev.implicit_agreement_rate != null
+          ? (ev.implicit_agreement_rate * 100).toFixed(1) + "%"
+          : "—";
+      metricsStripBody.textContent =
+        "Captures: " +
+        (s.transcribe_ok_count ?? 0) +
+        " · Classifier: " +
+        (s.classify_event_count ?? 0) +
+        " · Saved notes: " +
+        (s.notes_saved_sessions ?? 0) +
+        " · Implicit agree: " +
+        rate +
+        " (" +
+        (ev.implicitly_accepted ?? 0) +
+        " ok / " +
+        (ev.user_corrected_category ?? 0) +
+        " corrected)";
+    } catch (e) {
+      metricsStripBody.textContent = "Could not load metrics.";
+    }
+  }
+
+  function hasTranscriptForSave() {
+    return !!lastTranscript && lastTranscript !== "(empty transcript)";
+  }
+
+  /** User toggle (localStorage) overrides default from server `AHA_CATCHER_AUTO_SAVE`. */
+  function effectiveAutoSaveEnabled() {
+    if (!serverSaveAvailable) return false;
+    const raw = localStorage.getItem(LS_AUTO_SAVE);
+    if (raw === "0") return false;
+    if (raw === "1") return true;
+    return !!serverAutoSave;
+  }
+
+  function autoSaveCheckboxState() {
+    const raw = localStorage.getItem(LS_AUTO_SAVE);
+    if (raw === "0") return false;
+    if (raw === "1") return true;
+    return !!serverAutoSave;
+  }
+
+  function syncAutoSaveRow() {
+    if (!autoSaveRow || !autoSaveToggle) return;
+    autoSaveRow.hidden = !serverSaveAvailable;
+    if (!serverSaveAvailable) return;
+    autoSaveToggle.checked = autoSaveCheckboxState();
+  }
+
+  function syncSavePanel() {
+    const ok = hasTranscriptForSave();
+    downloadMdBtn.disabled = !ok || isRecording || transcribeBusy;
+    saveAsMdBtn.disabled = !ok || isRecording || transcribeBusy;
+    serverSaveBtn.hidden = !serverSaveAvailable;
+    serverSaveBtn.disabled =
+      !ok || isRecording || transcribeBusy || serverSaveBusy || !serverSaveAvailable;
+    if (typeof window.showSaveFilePicker !== "function") {
+      saveAsMdBtn.disabled = true;
+      saveAsMdBtn.title =
+        "Save as… needs a Chromium-based browser (Chrome / Edge). Use Download .md once a transcript exists.";
+    } else if (ok) {
+      saveAsMdBtn.title = "Choose folder — e.g. iCloud Drive → Ideas";
+    } else {
+      saveAsMdBtn.title = "Enabled after Stop & capture returns a transcript.";
+    }
+    if (!ok) {
+      downloadMdBtn.title = "Enabled after Stop & capture returns a transcript.";
+    } else {
+      downloadMdBtn.title = "";
+    }
+  }
+
+  function yamlDoubleQuoted(s) {
+    return (
+      '"' +
+      String(s)
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\r?\n/g, " ") +
+      '"'
+    );
+  }
+
+  function noteTitleFromTranscript(t) {
+    const line = (t || "").split(/\r?\n/)[0].trim();
+    const one = line.replace(/\s+/g, " ").trim();
+    return one.slice(0, 120) || "Voice capture";
+  }
+
+  function slugFromTranscript(text, maxLen) {
+    let t = (text || "").replace(/\(empty transcript\)/i, "").trim();
+    if (!t) return "note";
+    let slug = t
+      .slice(0, maxLen)
+      .replace(/\s+/g, "-")
+      .replace(/[^-a-zA-Z0-9\u4e00-\u9fff._]/g, "");
+    slug = slug.replace(/-+/g, "-").replace(/^-|-$/g, "") || "note";
+    if (slug.length > maxLen) slug = slug.slice(0, maxLen);
+    return slug;
+  }
+
+  function suggestedMdFilename() {
+    const iso = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+    const slug = slugFromTranscript(lastTranscript || "", 48);
+    return `${iso}-ahacatcher-${slug}.md`;
+  }
+
+  function buildMarkdownNote() {
+    const created = lastNoteCreatedIso || new Date().toISOString();
+    const title = noteTitleFromTranscript(lastTranscript || "");
+    let tags = ["ahacatcher", "transcript"];
+    if (summaryLoaded) tags.push("with-summary");
+    const extraParsed = parseExtraTagsFromInput(extraTagsInput && extraTagsInput.value);
+    /* Cross-category hooks: same extra labels on different `category` values → one grep / Obsidian query. */
+    tags = mergeAllTags(tags, extraParsed);
+    const tagsYaml = tags.map(yamlTagToken).join(", ");
+    const category =
+      noteCategorySelect && noteCategorySelect.value
+        ? noteCategorySelect.value.trim()
+        : "unsorted";
+    const lines = [
+      "---",
+      `title: ${yamlDoubleQuoted(title)}`,
+      `category: ${category}`,
+    ];
+    if (category === "reading" && readingSourceInput) {
+      const src = readingSourceInput.value.trim();
+      if (src) {
+        lines.push(`source: ${yamlDoubleQuoted(src)}`);
+      }
+    }
+    lines.push(
+      `tags: [${tagsYaml}]`,
+      "status: captured",
+      `created: ${yamlDoubleQuoted(created)}`,
+      "origin: ahacatcher-web",
+      `has_summary: ${summaryLoaded ? "true" : "false"}`,
+      "---",
+      "",
+      "## Transcript",
+      "",
+      lastTranscript || "",
+      "",
+    );
+    if (summaryLoaded) {
+      lines.push("## Research summary", "", lastSummaryText || "", "");
+    }
+    return lines.join("\n");
+  }
+
+  function downloadMarkdownFile(contents, filename) {
+    const blob = new Blob([contents], { type: "text/markdown;charset=utf-8" });
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  async function saveMarkdownWithFilePicker(contents, suggestedName) {
+    if (typeof window.showSaveFilePicker !== "function") return false;
+    const handle = await window.showSaveFilePicker({
+      suggestedName,
+      types: [
+        {
+          description: "Markdown",
+          accept: { "text/markdown": [".md"], "text/plain": [".md"] },
+        },
+      ],
+    });
+    const writable = await handle.createWritable();
+    await writable.write(contents);
+    await writable.close();
+    return true;
+  }
+
+  async function saveMarkdownViaServer(contents, filename) {
+    const res = await fetch(`${API_BASE}/api/save-note`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ filename, content: contents }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg =
+        typeof data.detail === "string"
+          ? data.detail
+          : data.detail
+            ? JSON.stringify(data.detail)
+            : JSON.stringify(data);
+      throw new Error(msg || `Save failed (${res.status})`);
+    }
+    return data;
+  }
+
+  function formatSavedMessage(data, prefix) {
+    const pre = prefix ? prefix + " — " : "";
+    let line;
+    if (data.paths && data.paths.length) {
+      line = pre + "Saved: " + data.paths.join(" · ");
+    } else if (data.path) {
+      line = pre + "Saved: " + data.path;
+    } else {
+      line = pre + "Saved.";
+    }
+    if (data.warnings && data.warnings.length) {
+      line += " Warning: " + data.warnings.join("; ");
+    }
+    return line;
+  }
+
+  async function tryAutoSaveServer(label) {
+    if (!serverSaveAvailable || !effectiveAutoSaveEnabled() || !hasTranscriptForSave() || !lastNoteBasename) {
+      if (label === "summary" && serverSaveAvailable && !effectiveAutoSaveEnabled()) {
+        saveStatusEl.textContent =
+          "Summary ready — turn on Auto-save to server folders to write this note, or tap Save on this Mac.";
+      } else if (label === "summary" && !serverSaveAvailable) {
+        saveStatusEl.textContent =
+          "Summary ready — configure server folders in .env to auto-save, or use Download / Save as…";
+      } else if (label === "summary" && !lastNoteBasename) {
+        saveStatusEl.textContent =
+          "Summary ready — missing note file name (re-capture transcript to fix auto-save).";
+      }
+      return;
+    }
+    try {
+      const data = await saveMarkdownViaServer(buildMarkdownNote(), lastNoteBasename);
+      saveStatusEl.textContent = formatSavedMessage(data, label ? "Auto-save (" + label + ")" : "Auto-save");
+      await reportNoteSaved("server", label ? "auto:" + label : "auto");
+    } catch (e) {
+      console.error(e);
+      saveStatusEl.textContent =
+        (label ? "Auto-save (" + label + ") " : "Auto-save ") + "failed: " + (e.message || String(e));
+    }
+  }
+
+  function renderConversationBodies() {
+    conversationUserBody.textContent =
+      lastTranscript || "(No transcript yet — capture a clip first.)";
+    conversationAiBody.textContent = summaryLoaded
+      ? lastSummaryText
+      : "(No assistant reply yet — tap Get research summary.)";
+  }
+
+  function syncFetchSummaryBtn() {
+    const hasText = lastTranscript && lastTranscript !== "(empty transcript)";
+    fetchSummaryBtn.disabled =
+      !hasText ||
+      isRecording ||
+      transcribeBusy ||
+      summaryBusy ||
+      summaryLoaded;
+    syncVmConversationBtn();
+  }
+
+  function setStatus(msg) {
+    statusEl.textContent = msg || "";
+  }
+
+  function stopReplay() {
+    if (replayAudio) {
+      replayAudio.pause();
+      replayAudio.currentTime = 0;
+      replayAudio = null;
+    }
+    if (replayObjectUrl) {
+      URL.revokeObjectURL(replayObjectUrl);
+      replayObjectUrl = null;
+    }
+  }
+
+  /**
+   * Play a WAV blob through HTMLAudioElement (works with user gesture from button).
+   */
+  async function playWavBlob(blob) {
+    stopReplay();
+    replayObjectUrl = URL.createObjectURL(blob);
+    replayAudio = new Audio(replayObjectUrl);
+    replayAudio.onended = () => {
+      stopReplay();
+    };
+    try {
+      await replayAudio.play();
+    } catch (err) {
+      stopReplay();
+      throw err;
+    }
+  }
+
+  function writeString(view, offset, str) {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  }
+
+  function encodeWavMonoF32(samples, sampleRate) {
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const blockAlign = (numChannels * bitsPerSample) / 8;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = samples.length * 2;
+    const buf = new ArrayBuffer(44 + dataSize);
+    const view = new DataView(buf);
+    writeString(view, 0, "RIFF");
+    view.setUint32(4, 36 + dataSize, true);
+    writeString(view, 8, "WAVE");
+    writeString(view, 12, "fmt ");
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+    writeString(view, 36, "data");
+    view.setUint32(40, dataSize, true);
+    let offset = 44;
+    for (let i = 0; i < samples.length; i++, offset += 2) {
+      let s = Math.max(-1, Math.min(1, samples[i]));
+      view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return buf;
+  }
+
+  function concatRecordChunks(chunks) {
+    if (!chunks.length) return null;
+    let total = 0;
+    for (const c of chunks) total += c.length;
+    const out = new Float32Array(total);
+    let off = 0;
+    for (const c of chunks) {
+      out.set(c, off);
+      off += c.length;
+    }
+    return out;
+  }
+
+  /** One-time setup: mic → ScriptProcessor; only appends samples when isRecording. */
+  async function ensureAudioPipeline() {
+    if (initError) throw new Error(initError);
+    if (audioContext && processor) {
+      await audioContext.resume();
+      return;
+    }
+    try {
+      mediaStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          channelCount: 1,
+        },
+      });
+      audioContext = new AudioContext();
+      sourceNode = audioContext.createMediaStreamSource(mediaStream);
+      const bufferSize = 4096;
+      processor = audioContext.createScriptProcessor(bufferSize, 1, 1);
+      processor.onaudioprocess = (e) => {
+        if (!isRecording) return;
+        const input = e.inputBuffer;
+        const ch0 = input.getChannelData(0);
+        const ch1 = input.numberOfChannels > 1 ? input.getChannelData(1) : null;
+        const n = ch0.length;
+        const block = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+          block[i] = ch1 ? (ch0[i] + ch1[i]) * 0.5 : ch0[i];
+        }
+        recordChunks.push(block);
+      };
+      sourceNode.connect(processor);
+      const mute = audioContext.createGain();
+      mute.gain.value = 0;
+      processor.connect(mute);
+      mute.connect(audioContext.destination);
+      await audioContext.resume();
+    } catch (err) {
+      initError = err.message || String(err);
+      throw err;
+    }
+  }
+
+  document.body.addEventListener(
+    "click",
+    () => {
+      if (audioContext && audioContext.state === "suspended") audioContext.resume();
+    },
+    { capture: true }
+  );
+
+  /** OpenAI-style string or array of { type, text } parts → plain string for Markdown. */
+  function normalizeMessageContent(content) {
+    if (content == null) return "";
+    if (typeof content === "string") return content;
+    if (Array.isArray(content)) {
+      const parts = [];
+      for (const part of content) {
+        if (typeof part === "string") parts.push(part);
+        else if (part && typeof part === "object" && typeof part.text === "string") {
+          parts.push(part.text);
+        }
+      }
+      return parts.join("");
+    }
+    if (typeof content === "object") {
+      try {
+        return JSON.stringify(content);
+      } catch (_) {
+        return String(content);
+      }
+    }
+    return String(content);
+  }
+
+  function formatApiErrorPayload(data, status) {
+    if (!data || typeof data !== "object") return `HTTP ${status}`;
+    const d = data.detail;
+    if (typeof d === "string") return d;
+    if (Array.isArray(d)) {
+      return d
+        .map((x) => (x && typeof x === "object" ? x.msg || JSON.stringify(x) : String(x)))
+        .join("; ");
+    }
+    return data.message || data.error || JSON.stringify(data);
+  }
+
+  async function transcribe(wavBlob) {
+    const form = new FormData();
+    form.append("file", wavBlob, "aha-capture.wav");
+    const res = await fetch(`${API_BASE}/api/transcribe`, {
+      method: "POST",
+      body: form,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = formatApiErrorPayload(data, res.status);
+      throw new Error(`Transcription failed (${res.status}): ${msg}`);
+    }
+    return data;
+  }
+
+  async function transcribeVoiceMemoPath(absPath) {
+    const res = await fetch(`${API_BASE}/api/transcribe-local`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path: absPath }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = formatApiErrorPayload(data, res.status);
+      throw new Error(`Transcription failed (${res.status}): ${msg}`);
+    }
+    return data;
+  }
+
+  /** After any successful transcribe (capture or Voice Memos): UI, classify, auto-save. */
+  async function afterTranscriptReady(transcriptText, sessionAfterStop) {
+    lastTranscript = transcriptText;
+    if (hasTranscriptForSave()) {
+      lastNoteCreatedIso = new Date().toISOString();
+      lastNoteBasename = suggestedMdFilename();
+    } else {
+      lastNoteCreatedIso = null;
+      lastNoteBasename = null;
+    }
+
+    resultsEl.innerHTML =
+      "<div class=\"result-block\"><h2>Transcript (original)</h2><div class=\"result-body\"></div></div>";
+    resultsEl.querySelector(".result-body").textContent = transcriptText;
+
+    renderConversationBodies();
+    syncFetchSummaryBtn();
+    syncSavePanel();
+    if (sessionAfterStop !== workSession) return;
+    setStatus("Sorting category & tags…");
+    await classifyApplyFromServer(transcriptText);
+    if (sessionAfterStop !== workSession) return;
+    syncSavePanel();
+    await tryAutoSaveServer("transcript");
+    setStatus("Transcript ready — replay, then Get research summary when you want the AI note.");
+  }
+
+  async function researchSummary(transcript) {
+    const res = await fetch(`${API_BASE}/api/research`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ transcript }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg = formatApiErrorPayload(data, res.status);
+      throw new Error(`Chat failed (${res.status}): ${msg}`);
+    }
+    if (typeof data.assistant_text === "string" && data.assistant_text.trim() !== "") {
+      return data.assistant_text.trim();
+    }
+    const choice = data.choices && data.choices[0];
+    const msgObj = choice && choice.message;
+    let raw = msgObj && msgObj.content;
+    if (raw === undefined || raw === null) {
+      throw new Error(
+        "Unexpected chat response: no assistant_text and no choices[0].message.content. Check server logs."
+      );
+    }
+    const normalized = normalizeMessageContent(raw).trim();
+    if (!normalized) {
+      throw new Error("Assistant reply was empty after parsing.");
+    }
+    return normalized;
+  }
+
+  /** After transcribe: LLM sets category, extra tags, reading source (unknown if reading & no book). */
+  async function classifyApplyFromServer(transcriptText) {
+    if (!transcriptText || transcriptText === "(empty transcript)") return;
+    metricsClassifySucceeded = false;
+    metricsSessionPredicted = null;
+    try {
+      const res = await fetch(`${API_BASE}/api/classify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transcript: transcriptText }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.warn("[ahacatcher] classify failed:", res.status, data);
+        return;
+      }
+      if (data.category && NOTE_CATEGORY_VALUES.has(data.category)) {
+        metricsClassifySucceeded = true;
+        metricsSessionPredicted = data.category;
+        await reportMetricsClassify(data.category, data.model);
+      }
+      if (data.category && NOTE_CATEGORY_VALUES.has(data.category) && noteCategorySelect) {
+        noteCategorySelect.value = data.category;
+        localStorage.setItem(LS_NOTE_CATEGORY, data.category);
+      }
+      if (extraTagsInput) {
+        const tags = Array.isArray(data.tags) ? data.tags.map(String).filter(Boolean) : [];
+        extraTagsInput.value = tags.join(", ");
+        localStorage.setItem(LS_EXTRA_TAGS, extraTagsInput.value);
+      }
+      if (readingSourceInput) {
+        if (data.category === "reading") {
+          const rs =
+            data.reading_source != null && String(data.reading_source).trim() !== ""
+              ? String(data.reading_source).trim()
+              : "unknown";
+          readingSourceInput.value = rs;
+          localStorage.setItem(LS_READING_SOURCE, readingSourceInput.value);
+        } else {
+          readingSourceInput.value = "";
+          localStorage.removeItem(LS_READING_SOURCE);
+        }
+      }
+      syncReadingSourceVisibility();
+      if (classifyViz && classifyVizWhy && classifyVizMeta) {
+        const why =
+          typeof data.why === "string" && data.why.trim() !== ""
+            ? data.why.trim()
+            : "No explanation returned — you can change category and tags below.";
+        classifyVizWhy.textContent = why;
+        const model = typeof data.model === "string" && data.model ? data.model : "(unknown model)";
+        const ic = Number.isFinite(Number(data.input_chars)) ? Number(data.input_chars) : null;
+        const uc = Number.isFinite(Number(data.used_chars)) ? Number(data.used_chars) : null;
+        let meta = `Model: ${model}`;
+        if (ic != null && uc != null) {
+          meta += ` · Transcript length: ${ic} characters sent · Classifier input: ${uc} characters`;
+        }
+        classifyVizMeta.textContent = meta;
+        classifyViz.hidden = false;
+      }
+    } catch (e) {
+      console.warn("[ahacatcher] classify error:", e);
+    }
+  }
+
+  async function loadVoiceMemosList() {
+    if (!vmSelect || !vmImportStatus) return;
+    vmImportStatus.classList.remove("vm-permission-warn");
+    vmImportStatus.textContent = "正在读取语音备忘录列表…";
+    vmSelect.innerHTML = "<option value=\"\">— 加载中 —</option>";
+    syncVmConversationBtn();
+    try {
+      const res = await fetch(`${API_BASE}/api/voice-memos`);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        vmImportStatus.textContent = formatApiErrorPayload(data, res.status);
+        vmSelect.innerHTML = "<option value=\"\">— 出错 —</option>";
+        syncVmConversationBtn();
+        return;
+      }
+      const recs = Array.isArray(data.recordings) ? data.recordings : [];
+      vmSelect.innerHTML = "";
+      if (!recs.length) {
+        vmSelect.innerHTML = "<option value=\"\">— 未找到录音文件 —</option>";
+        vmImportStatus.textContent = data.hint || "当前目录下没有可导入的音频。";
+        if (data.permission_blocked) vmImportStatus.classList.add("vm-permission-warn");
+        syncVmConversationBtn();
+        return;
+      }
+      const ph = document.createElement("option");
+      ph.value = "";
+      ph.textContent = "— 请选择一条录音 —";
+      vmSelect.appendChild(ph);
+      for (const r of recs) {
+        const p = r.path != null ? String(r.path) : "";
+        if (!p) continue;
+        const opt = document.createElement("option");
+        opt.value = p;
+        const name = r.name != null ? String(r.name) : p;
+        const when =
+          r.modified != null ? String(r.modified).replace("T", " ").replace("+00:00", " UTC") : "";
+        const sz = r.size != null ? Number(r.size) : 0;
+        const mb = sz > 0 ? (sz / (1024 * 1024)).toFixed(2) + " MB" : "";
+        opt.textContent = [name, when && when.slice(0, 19), mb].filter(Boolean).join(" · ");
+        vmSelect.appendChild(opt);
+      }
+      vmImportStatus.classList.remove("vm-permission-warn");
+      vmImportStatus.textContent =
+        "共 " + recs.length + " 条录音，选中后点击 Conversation 开始转写。";
+      syncVmConversationBtn();
+    } catch (e) {
+      console.error(e);
+      vmImportStatus.classList.remove("vm-permission-warn");
+      vmImportStatus.textContent = e.message || String(e);
+      vmSelect.innerHTML = "<option value=\"\">— 出错 —</option>";
+      syncVmConversationBtn();
+    }
+  }
+
+  if (vmImportBtn && vmImportPanel) {
+    vmImportBtn.addEventListener("click", () => {
+      const open = vmImportPanel.hidden;
+      vmImportPanel.hidden = !open;
+      vmImportBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) loadVoiceMemosList();
+    });
+  }
+  if (vmRefreshBtn) {
+    vmRefreshBtn.addEventListener("click", () => loadVoiceMemosList());
+  }
+  if (vmSelect) {
+    vmSelect.addEventListener("change", () => syncVmConversationBtn());
+  }
+  if (vmConversationBtn) {
+    vmConversationBtn.addEventListener("click", async () => {
+      if (transcribeBusy || isRecording || !vmSelect || !vmSelect.value) return;
+      const path = vmSelect.value;
+      stopReplay();
+      resetForNewRecording();
+      lastWavBlob = null;
+      const sessionAfterStop = workSession;
+      transcribeBusy = true;
+      captureBtn.disabled = true;
+      syncVmConversationBtn();
+      syncFetchSummaryBtn();
+      try {
+        setStatus("正在读取语音备忘录并转写…");
+        resultsEl.innerHTML = "";
+        const tr = await transcribeVoiceMemoPath(path);
+        if (sessionAfterStop !== workSession) return;
+        try {
+          const au = await fetch(
+            `${API_BASE}/api/voice-memos/audio?path=` + encodeURIComponent(path)
+          );
+          if (au.ok) lastWavBlob = await au.blob();
+          else lastWavBlob = null;
+        } catch (err) {
+          console.warn("[ahacatcher] voice memo audio fetch:", err);
+          lastWavBlob = null;
+        }
+        const transcriptText = (tr.text || "").trim() || "(empty transcript)";
+        await afterTranscriptReady(transcriptText, sessionAfterStop);
+      } catch (e) {
+        console.error(e);
+        resultsEl.innerHTML =
+          "<div class=\"error\">" + (e.message || String(e)) + "</div>";
+        setStatus("");
+      } finally {
+        transcribeBusy = false;
+        captureBtn.disabled = false;
+        syncVmConversationBtn();
+        syncFetchSummaryBtn();
+        syncSavePanel();
+      }
+    });
+  }
+
+  captureBtn.addEventListener("click", async () => {
+    if (transcribeBusy) return;
+
+    if (!isRecording) {
+      resultsEl.innerHTML = "";
+      stopReplay();
+      resetForNewRecording();
+      try {
+        await ensureAudioPipeline();
+        recordChunks = [];
+        isRecording = true;
+        captureBtn.classList.add("recording");
+        captureBtn.textContent = "Stop & capture";
+        replayBtn.disabled = true;
+        fetchSummaryBtn.disabled = true;
+        setStatus("Recording… tap the button again when you are done.");
+      } catch (e) {
+        console.error(e);
+        isRecording = false;
+        captureBtn.classList.remove("recording");
+        captureBtn.textContent = "Capture Aha!";
+        resultsEl.innerHTML =
+          "<div class=\"error\">" + (e.message || String(e)) + "</div>";
+        setStatus("");
+        syncFetchSummaryBtn();
+      }
+      return;
+    }
+
+    isRecording = false;
+    captureBtn.classList.remove("recording");
+    captureBtn.textContent = "Capture Aha!";
+    replayBtn.disabled = false;
+    syncFetchSummaryBtn();
+
+    const samples = concatRecordChunks(recordChunks);
+    recordChunks = [];
+
+    if (!samples || samples.length === 0) {
+      setStatus("No audio in this clip — press Capture Aha! to record again.");
+      return;
+    }
+
+    const sr = audioContext.sampleRate;
+    const wavBuf = encodeWavMonoF32(samples, sr);
+    const wavBlob = new Blob([wavBuf], { type: "audio/wav" });
+    lastWavBlob = wavBlob;
+
+    const sessionAfterStop = workSession;
+
+    lastTranscript = null;
+    lastSummaryText = "";
+    lastNoteBasename = null;
+    lastNoteCreatedIso = null;
+    summaryLoaded = false;
+    conversationUserBody.textContent = "";
+    conversationAiBody.textContent = "";
+    fetchSummaryBtn.classList.remove("is-done");
+    fetchSummaryBtn.querySelector("span").textContent = "Get research summary";
+    syncFetchSummaryBtn();
+    renderConversationBodies();
+
+    transcribeBusy = true;
+    captureBtn.disabled = true;
+    try {
+      setStatus("Uploading and transcribing…");
+      const tr = await transcribe(wavBlob);
+      if (sessionAfterStop !== workSession) return;
+
+      const transcriptText = (tr.text || "").trim() || "(empty transcript)";
+      await afterTranscriptReady(transcriptText, sessionAfterStop);
+    } catch (e) {
+      console.error(e);
+      resultsEl.innerHTML =
+        "<div class=\"error\">" + (e.message || String(e)) + "</div>";
+      setStatus("");
+    } finally {
+      transcribeBusy = false;
+      captureBtn.disabled = false;
+      syncFetchSummaryBtn();
+      syncSavePanel();
+    }
+  });
+
+  fetchSummaryBtn.addEventListener("click", async () => {
+    if (!lastTranscript || isRecording || summaryLoaded || transcribeBusy) return;
+    const sessionAtClick = workSession;
+    summaryBusy = true;
+    syncFetchSummaryBtn();
+    let summarySucceeded = false;
+    try {
+      setStatus("Fetching research summary…");
+      const summary = await researchSummary(lastTranscript);
+      if (sessionAtClick !== workSession) return;
+      lastSummaryText = summary;
+      summaryLoaded = true;
+      fetchSummaryBtn.classList.add("is-done");
+      fetchSummaryBtn.querySelector("span").textContent = "Summary loaded";
+      renderConversationBodies();
+      syncSavePanel();
+      setStatus("Done.");
+      summarySucceeded = true;
+      await reportMetricsResearch();
+    } catch (e) {
+      console.error(e);
+      const errMsg = e.message || String(e);
+      setStatus("Summary failed — see red box below.");
+      resultsEl.querySelectorAll(".summary-fetch-error").forEach((n) => n.remove());
+      const errBox = document.createElement("div");
+      errBox.className = "error summary-fetch-error";
+      errBox.style.marginTop = "1rem";
+      errBox.textContent = errMsg;
+      resultsEl.appendChild(errBox);
+    } finally {
+      summaryBusy = false;
+      syncFetchSummaryBtn();
+      syncSavePanel();
+      if (summarySucceeded) {
+        await tryAutoSaveServer("summary");
+      }
+    }
+  });
+
+  downloadMdBtn.addEventListener("click", () => {
+    if (!hasTranscriptForSave()) return;
+    try {
+      const body = buildMarkdownNote();
+      const name = lastNoteBasename || suggestedMdFilename();
+      downloadMarkdownFile(body, name);
+      saveStatusEl.textContent = `Downloaded: ${name}`;
+      reportNoteSaved("download", "manual");
+    } catch (e) {
+      console.error(e);
+      saveStatusEl.textContent = "Download failed: " + (e.message || String(e));
+    }
+  });
+
+  saveAsMdBtn.addEventListener("click", async () => {
+    if (!hasTranscriptForSave() || typeof window.showSaveFilePicker !== "function") return;
+    try {
+      const body = buildMarkdownNote();
+      const name = lastNoteBasename || suggestedMdFilename();
+      await saveMarkdownWithFilePicker(body, name);
+      saveStatusEl.textContent = `Saved: ${name}`;
+      await reportNoteSaved("save_as", "manual");
+    } catch (e) {
+      if (e && e.name === "AbortError") return;
+      console.error(e);
+      saveStatusEl.textContent = "Save as… failed: " + (e.message || String(e));
+    }
+  });
+
+  serverSaveBtn.addEventListener("click", async () => {
+    if (!serverSaveAvailable || !hasTranscriptForSave() || serverSaveBusy) return;
+    serverSaveBusy = true;
+    syncSavePanel();
+    saveStatusEl.textContent = "Saving on this Mac…";
+    try {
+      const body = buildMarkdownNote();
+      const name = lastNoteBasename || suggestedMdFilename();
+      const data = await saveMarkdownViaServer(body, name);
+      saveStatusEl.textContent = formatSavedMessage(data, "Saved");
+      await reportNoteSaved("server", "manual");
+    } catch (e) {
+      console.error(e);
+      saveStatusEl.textContent = (e.message || String(e));
+    } finally {
+      serverSaveBusy = false;
+      syncSavePanel();
+    }
+  });
+
+  replayBtn.addEventListener("click", async () => {
+    if (isRecording) return;
+    replayBtn.disabled = true;
+    try {
+      if (!lastWavBlob) {
+        setStatus("Nothing to replay — finish a recording first (stop & capture).");
+        return;
+      }
+      setStatus("Playing recording…");
+      await playWavBlob(lastWavBlob);
+      setStatus("");
+    } catch (e) {
+      console.error(e);
+      setStatus("Replay failed: " + (e.message || String(e)));
+    } finally {
+      replayBtn.disabled = false;
+    }
+  });
+
+  renderConversationBodies();
+  syncNoteCategoryFromStorage();
+  syncReadingSourceFromStorage();
+  syncExtraTagsFromStorage();
+  syncReadingSourceVisibility();
+
+  if (autoSaveToggle) {
+    autoSaveToggle.addEventListener("change", () => {
+      localStorage.setItem(LS_AUTO_SAVE, autoSaveToggle.checked ? "1" : "0");
+    });
+  }
+
+  if (noteCategorySelect) {
+    noteCategorySelect.addEventListener("change", () => {
+      localStorage.setItem(LS_NOTE_CATEGORY, noteCategorySelect.value);
+      syncReadingSourceVisibility();
+    });
+  }
+
+  if (readingSourceInput) {
+    readingSourceInput.addEventListener("change", () => {
+      localStorage.setItem(LS_READING_SOURCE, readingSourceInput.value);
+    });
+    readingSourceInput.addEventListener("blur", () => {
+      localStorage.setItem(LS_READING_SOURCE, readingSourceInput.value);
+    });
+  }
+
+  if (extraTagsInput) {
+    extraTagsInput.addEventListener("change", () => {
+      localStorage.setItem(LS_EXTRA_TAGS, extraTagsInput.value);
+    });
+    extraTagsInput.addEventListener("blur", () => {
+      localStorage.setItem(LS_EXTRA_TAGS, extraTagsInput.value);
+    });
+  }
+
+  if (metricsRefreshBtn) {
+    metricsRefreshBtn.addEventListener("click", () => {
+      refreshMetricsStrip();
+    });
+  }
+
+  const footerHowToBtn = document.getElementById("footerHowToBtn");
+  const footerMapBtn = document.getElementById("footerMapBtn");
+  const footerMetricsBtn = document.getElementById("footerMetricsBtn");
+  const footerBackgroundBtn = document.getElementById("footerBackgroundBtn");
+  if (footerHowToBtn) {
+    footerHowToBtn.addEventListener("click", () => {
+      window.location.href = "how-to-use.html";
+    });
+  }
+  if (footerMapBtn) {
+    footerMapBtn.addEventListener("click", () => {
+      window.location.href = "map.html";
+    });
+  }
+  if (footerMetricsBtn) {
+    footerMetricsBtn.addEventListener("click", () => {
+      window.location.href = "metrics.html";
+    });
+  }
+  if (footerBackgroundBtn) {
+    footerBackgroundBtn.addEventListener("click", () => {
+      window.location.href = "background-monitor.html";
+    });
+  }
+
+  (async function loadServerSaveConfig() {
+    try {
+      const res = await fetch(`${API_BASE}/api/config`);
+      if (!res.ok) return;
+      const data = await res.json();
+      serverSaveAvailable = !!data.server_save;
+      serverAutoSave = !!data.auto_save;
+      metricsEnabled = !!data.metrics_enabled;
+    } catch (_) {
+      serverSaveAvailable = false;
+      serverAutoSave = false;
+      metricsEnabled = false;
+    }
+    syncAutoSaveRow();
+    syncSavePanel();
+    if (metricsEnabled) {
+      refreshMetricsStrip();
+    } else if (metricsStrip) {
+      metricsStrip.hidden = true;
+    }
+  })();
+})();
+  </script>
+</body>
+</html>

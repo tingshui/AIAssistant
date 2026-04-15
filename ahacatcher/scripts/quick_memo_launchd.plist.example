@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Voice Memos mirror sync + POST new files to ahacatcher /api/quick-memo (Option C).
+
+  1. Copy to ~/Library/LaunchAgents/com.YOURNAME.voice-memos-quick-memo.plist
+  2. Replace YOUR_HOME and project path; use venv python realpath for FDA if needed.
+  3. Ensure .env has AHA_CATCHER_QUICK_MEMO_SECRET and uvicorn is running (or use launchctl for uvicorn separately).
+  4. launchctl load ~/Library/LaunchAgents/com.YOURNAME.voice-memos-quick-memo.plist
+
+  StartInterval: seconds between runs (e.g. 300 = 5 minutes).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.YOURNAME.voice-memos-quick-memo</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>cd /YOUR_HOME/Documents/AI_Projects/cursor-project &amp;&amp; ./venv/bin/python3 ahacatcher/scripts/sync_voice_memos_mirror.py &amp;&amp; ./venv/bin/python3 ahacatcher/scripts/quick_memo_scan_mirror.py</string>
+    </array>
+    <key>StartInterval</key>
+    <integer>300</integer>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/YOUR_HOME/Library/Logs/voice-memos-quick-memo.log</string>
+    <key>StandardErrorPath</key>
+    <string>/YOUR_HOME/Library/Logs/voice-memos-quick-memo.err.log</string>
+</dict>
+</plist>

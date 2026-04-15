@@ -1,0 +1,536 @@
+# Instructions
+
+**ALL RULES APPLY TO EVERY REQUEST. NO EXCEPTIONS.** Whether the request is a quick question, a code edit, a search, or anything else—follow every rule below for every single turn.
+
+## 对话语言（与用户交流）
+
+- 所有**面向用户的回复**（解释、建议、步骤、错误说明、总结等）**默认使用简体中文**。
+- 除非用户明确要求使用其他语言，否则不要用英文作为主对话语言。
+- 代码、命令、API 名、文件名、库名等保持业界常用英文；可在中文叙述中夹注英文术语。
+
+## First Action Protocol (EVERY REQUEST)
+
+On every user message, perform these steps in order. Do not skip. Do not combine. Do not defer.
+
+1. **Read this file** (.cursorrules) in full.
+2. **Update Scratchpad** with: Task description, Plan (with `[ ]` todos), Tools needed. Clear old tasks if needed.
+3. **Review Lessons** – Check which apply to this task.
+4. **Then and only then** – Execute tools or make edits.
+
+## Mandatory Pre-Action Checklist
+
+**Before any tool call or code edit**, you MUST complete this checklist. Do NOT proceed until all items are done:
+
+1. **[ ] Scratchpad updated** – Write the task description and plan with `[ ]` todo markers in the Scratchpad section. Clear old tasks if needed.
+2. **[ ] Lessons reviewed** – Check the Lessons section for rules that apply to this task.
+3. **[ ] Tools identified** – Confirm which tools (`tools/shared/*`, `ahacatcher/scripts/*`, etc.) are needed.
+
+Only after all three are done may you execute tools or make edits.
+
+## Scratchpad Workflow (MANDATORY—NO EXCEPTIONS)
+
+- **On new task:** Update Scratchpad with task + plan + todo markers before any other action. This applies to ALL requests: questions, searches, edits, meta-discussions, everything.
+- **During task:** Update Scratchpad when you finish each subtask (mark `[X]`).
+- **After milestones:** Reflect and plan next steps in Scratchpad.
+- **Always** refer to Scratchpad when planning the next step.
+
+Example:
+```
+[X] Read .cursorrules, update Scratchpad
+[ ] Step 2
+[ ] Step 3
+```
+
+## Recording Lessons
+
+During your interaction with the user, if you find anything reusable in this project (e.g. version of a library, model name), especially about a fix to a mistake you made or a correction you received, you should take note in the `Lessons` section in the `.cursorrules` file so you will not make the same mistake again.
+
+# Tools
+
+Note all the tools are in python3. So in the case you need to do batch processing, you can always consult the python files and write your own script.
+
+## `tools/` 与 `ahacatcher/scripts/` 约定（新应用请遵守）
+
+- **`tools/shared/`**：跨应用复用的通用脚本（搜索、抓取、LLM、截图等）。**不要**把某个应用独有的业务逻辑放在这里。
+- **应用专用脚本**：放在 **`ahacatcher/scripts/`**（与 `ahacatcher/server.py` 并列），包含 Voice Memos 镜像、`quick_memo_scan_mirror`、launchd 示例 plist 等。未来若有第二个应用，使用 **`myapp/scripts/`** 与 **`myapp/`** 包并列，**不要**再放在 `tools/<app>/`。
+- **路径与文档**：通用能力变更时更新 **`tools/README.md`**；Aha! Catcher 的脚本路径写在 **`ahacatcher/README.md`**，链接用相对路径如 **`scripts/sync_voice_memos_mirror.py`**。
+- **仓库根目录**：脚本需读 `.env` / 写 `ahacatcher/data/` 时，用 `Path(__file__).resolve().parents[N]` 解析到仓库根（**`ahacatcher/scripts/foo.py`** 一般为 **`parents[2]`**），勿写死用户名路径。
+- **launchd / cron**：示例 plist 放在 **`ahacatcher/scripts/*.plist.example`**；用户拷贝到 `~/Library/LaunchAgents/` 后若移动了仓库路径，需自行改 plist 中的 `cd` 与脚本路径。
+
+[NOTE TO CURSOR: Since no API key is configured, please ignore both the Screenshot Verification and LLM sections below.]
+[NOTE TO USER: If you have configured or plan to configure an API key in the future, simply delete these two notice lines to enable these features.]
+
+## Screenshot Verification
+
+The screenshot verification workflow allows you to capture screenshots of web pages and verify their appearance using LLMs. The following tools are available:
+
+1. Screenshot Capture:
+```bash
+venv/bin/python3 tools/shared/screenshot_utils.py URL [--output OUTPUT] [--width WIDTH] [--height HEIGHT]
+```
+
+2. LLM Verification with Images:
+```bash
+venv/bin/python3 tools/shared/llm_api.py --prompt "Your verification question" --provider {openai|anthropic} --image path/to/screenshot.png
+```
+
+Example workflow（若用 `import` 方式，请将 `tools/shared` 加入 `PYTHONPATH`，或在该目录下以模块方式组织）:
+```python
+from screenshot_utils import take_screenshot_sync
+from llm_api import query_llm
+
+# Take a screenshot
+
+screenshot_path = take_screenshot_sync('https://example.com', 'screenshot.png')
+
+# Verify with LLM
+
+response = query_llm(
+    "What is the background color and title of this webpage?",
+    provider="openai",  # or "anthropic"
+    image_path=screenshot_path
+)
+print(response)
+```
+
+## LLM
+
+You always have an LLM at your side to help you with the task. For simple tasks, you could invoke the LLM by running the following command:
+```
+venv/bin/python3 ./tools/shared/llm_api.py --prompt "What is the capital of France?" --provider "anthropic"
+```
+
+The LLM API supports multiple providers:
+- OpenAI (default, model: gpt-4o)
+- Azure OpenAI (model: configured via AZURE_OPENAI_MODEL_DEPLOYMENT in .env file, defaults to gpt-4o-ms)
+- DeepSeek (model: deepseek-chat)
+- Anthropic (model: claude-3-sonnet-20240229)
+- Gemini (model: gemini-pro)
+- Local LLM (model: Qwen/Qwen2.5-32B-Instruct-AWQ)
+
+But usually it's a better idea to check the content of the file and use the APIs in the `tools/shared/llm_api.py` file to invoke the LLM if needed.
+
+## Web browser
+
+You could use the `tools/shared/web_scraper.py` file to scrape the web.
+```bash
+venv/bin/python3 ./tools/shared/web_scraper.py --max-concurrent 3 URL1 URL2 URL3
+```
+This will output the content of the web pages.
+
+## Search engine
+
+You could use the `tools/shared/search_engine.py` file to search the web.
+```bash
+venv/bin/python3 ./tools/shared/search_engine.py "your search keywords"
+```
+This will output the search results in the following format:
+```
+URL: https://example.com
+Title: This is the title of the search result
+Snippet: This is a snippet of the search result
+```
+If needed, you can further use the `tools/shared/web_scraper.py` file to scrape the web page content.
+
+# Lessons
+
+## User Specified Lessons
+
+- **对话语言：** 默认用简体中文回复用户（见上方 Instructions「对话语言」）。
+- You have a python venv in ./venv. Always use (activate) it when doing python development. First, to check whether 'uv' is available, use `which uv`. If that's the case, first activate the venv, and then use `uv pip install` to install packages. Otherwise, fall back to `pip`.
+- Include info useful for debugging in the program output.
+- Read the file before you try to edit it.
+- Due to Cursor's limit, when you use `git` and `gh` and need to submit a multiline commit message, first write the message in a file, and then use `git commit -F <filename>` or similar command to commit. And then remove the file. Include "[Cursor] " in the commit message and PR title.
+
+## Cursor learned
+
+- Always read .cursorrules at the start of any task before taking action; apply Lessons and Scratchpad context
+- **MANDATORY:** Use Scratchpad for every task: update with task + plan + todo markers BEFORE any tool call or edit; update progress as you complete subtasks
+- For search results, ensure proper handling of different character encodings (UTF-8) for international queries
+- Add debug information to stderr while keeping the main output clean in stdout for better pipeline integration
+- When using seaborn styles in matplotlib, use 'seaborn-v0_8' instead of 'seaborn' as the style name due to recent seaborn version changes
+- Use 'gpt-4o' as the model name for OpenAI's GPT-4 with vision capabilities
+- When searching for recent news, use the current year from user_info (e.g. 2026) instead of previous years, or include year+month (e.g. "OpenAI March 2026") for better results
+- Apply Scratchpad workflow to EVERY task—including quick informational queries (e.g. stock prices, news). Update Scratchpad BEFORE any tool call; mark steps [X] as completed during/after the task
+- **Universal rule enforcement:** Every rule in .cursorrules applies to every request. No task type is exempt. Follow First Action Protocol on every turn.
+- **FastAPI request body in Swagger:** Do NOT pass `request_body=...` to `@app.post()` — FastAPI does not accept it and raises `TypeError: post() got an unexpected keyword argument 'request_body'`. The schema is inferred from the function parameter (e.g. `body: SomeModel`). Use `Body(..., example={...})` for Swagger examples.
+- **Scratchpad-first, no exceptions:** Even when the user asks "did you use Scratchpad?" or meta-questions about the protocol, the agent previously skipped updating Scratchpad before the first tool call. ALWAYS update Scratchpad as the FIRST action of EVERY turn, before read_file or any other tool. Record this failure when it happens.
+- **Failure recorded (2026-04-15):** I accidentally used `Read` on `.cursorrules` before updating Scratchpad. Must update Scratchpad FIRST on every user message, even before reading any file.
+- **Failure recorded (2026-04-15, again):** I again read `.cursorrules` before updating Scratchpad. Treat this as a hard stop next time: update Scratchpad first, then read.
+- **openai-whisper + PyTorch in venv:** If `RuntimeError: Numpy is not available` or NumPy 2.x vs torch wheel mismatch, pin `numpy<2` (e.g. 1.26.x) in the project venv.
+- **Python 3.9 + Pydantic v2:** In `BaseModel` field annotations, use `Optional[T]` instead of `T | None`; Pydantic may fail to evaluate PEP604 unions on 3.9 (`unsupported operand type(s) for |`).
+- **ahacatcher Voice Memos（macOS）：** Import 默认只扫 **`~/Documents/VoiceMemosMirror`**（`AHA_CATCHER_VOICE_MEMOS_MIRROR_DIR` / `AHA_CATCHER_VOICE_MEMOS_USE_MIRROR_ONLY=1`）。先用 **`ahacatcher/scripts/sync_voice_memos_mirror.py`**（默认同路径）或 launchd 同步。若列表仍空，先跑同步或检查路径。若坚持直接读系统库，设 `AHA_CATCHER_VOICE_MEMOS_USE_MIRROR_ONLY=0` 并为 **终端 / Cursor / Python** 开**完全磁盘访问权限**。
+- **Voice Memos 镜像：** **`ahacatcher/scripts/sync_voice_memos_mirror.py`** 默认同上镜像目录；**默认 prune**：App 里删除录音后同步会删镜像对应文件；`--no-prune` / `VOICE_MEMOS_MIRROR_NO_PRUNE=1` 为只拷不删。FDA 常需**同时**勾选 **Python 真实路径**（`--print-fda-paths`）与 **宿主 App**（Cursor：`Cursor.app` + **⌘Q**；终端：`Terminal.app`）；**launchd** 定时任务需在 FDA 中勾选 **实际执行脚本的 Python**（与 plist 中一致）。
+- **AI.assistant 模型：** **网页「本地重新提取」**默认 `provider=local`（`LOCAL_LLM_BASE_URL` 默认 Ollama `http://127.0.0.1:11434/v1`，`LOCAL_LLM_MODEL` 默认 `llama3.2`）；可用 `AI_ASSISTANT_WEB_REEXTRACT_PROVIDER=aibuilder` 改回云端。**CLI `chat`** 仍默认 **aibuilder**（`AI_BUILDER_TOKEN` 等与 MCP 同源）。改 `.env` 后**重启** uvicorn。
+- **就诊年龄（visit age）字段：** 抽取出的 `patient_age` 可能是当前年龄或文档里的描述。展示「就诊年龄」时**不要用当前年龄**；应使用成员生日 + `visit_date_extracted` 计算（生日用 `.env` `AI_ASSISTANT_BIRTHDATE_<PERSON>=YYYY-MM-DD` 配置），避免“现在3岁、两年前就诊应为1岁”的错误。
+
+# Scratchpad
+
+Task：在 `AI.assistant/` 下新增一个可复制粘贴的项目定义文本文件（用于后续补充需求/范围/里程碑）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（任务/计划/工具）
+[X] 新增 `AI.assistant/project_definition.txt`（放模板结构）
+
+Tools needed：ApplyPatch（新增文件）、Read（已读 .cursorrules）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答 observed-at 的含义（看病时间 vs 导入时间）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 解释 observed-at 与 imported_at 的区别与推荐填写规则
+
+Tools needed：无（解释）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：支持“家庭多成员数据隔离”：同一系统服务多个 family member（我/女儿/儿子），数据不能混用。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 给出隔离方案对比（多 DB 文件 vs 单 DB 分区）
+[X] 推荐默认实现与后续演进（含最少 token/最小权限）
+
+Tools needed：无（先讨论）；（可选）StrReplace/Write（更新 DESIGN.md 与 schema）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：重读 `project_definition.txt`，回应“仅靠姓名分库不够；需要更细的分类以支撑多模块扩展”的担忧，并给出多维 taxonomy 建议。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 重读 `AI.assistant/project_definition.txt`（对照 modules / memory / boundaries）
+[X] 给出比“姓名分区”更完整的分类维度（domain/subdomain/module/record_kind 等）
+[X] 说明物理隔离 vs 逻辑标签如何组合（推荐默认）
+
+Tools needed：Read（读 project_definition）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：按 DESIGN.md 的 M1 开始“数据库构建”：创建 SQLite schema + data 目录；扩展 CLI 支持 init-db / import-pdf / list-records。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 读现有 `AI.assistant` 代码（main.py / cli.py 等）
+[X] 添加 DB schema 与初始化逻辑（SQLite）
+[X] 添加 PDF 导入：copy raw + hash + 抽文本 + chunk + 写入 records/chunks
+[X] 添加 `list-records`（验证导入成功）
+[X] 安装依赖（优先 uv pip）：`pypdf`（抽 PDF 文本）
+[X] 运行 smoke tests（init-db / import / list）
+
+Tools needed：Read/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：通读 `AI.assistant/project_definition.txt`（你的初始想法），基于“先做 Health + 预留其它分类空位”的方向给出整体架构与数据结构建议。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 通读 `AI.assistant/project_definition.txt`，提炼关键约束与目标
+[X] 给出高层架构建议（模块边界、扩展点）
+[X] 给出数据结构建议（先 Health，其他 category 占位）
+[X] 给出一份可执行的里程碑（M1/M2/M3）
+
+Tools needed：Read（读 project_definition）、（可选）ApplyPatch（如需回填文档）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答“在 Mac 上如何开始自己的数据库、用什么、放哪里”，尤其是导入医生就诊总结（doctor visit summaries）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 给出本地存储选型建议（SQLite vs 文件/JSONL vs Postgres）
+[X] 建议目录结构与默认落盘路径（repo 内/用户目录）
+[X] 给出面向健康数据的最小表/对象结构建议（raw + structured + memory）
+[X] 给出导入医生总结的建议流程（raw 保存 + 解析 + provenance + sensitivity）
+
+Tools needed：无（纯建议）；（可选）ApplyPatch（如需写入文档）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答“是否需要 LangChain/FAISS 做 embedding/vector；关系型数据库是否还工作；推荐组合架构”。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 解释关系型 DB 与向量索引的分工（互补，不冲突）
+[X] 给出最小可行组合（SQLite + 向量索引/或先不做向量）
+[X] 说明 LangChain 的角色（可选编排库）与 FAISS 的角色（索引库）
+
+Tools needed：无（纯解释）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：讨论 health 数据源（PDF/Notes/Chat/Watch/Lab PDF）下的个人数据库方案；对比不同数据库/存储方式；并把“未来最少 token 查询成本”纳入设计。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 分类数据源与敏感级别（Tier A/B）
+[X] 对比存储方案（文件/SQLite/Postgres/向量库/时序库）
+[X] 给出推荐的分层架构（raw + structured + derived + vector + cache）
+[X] 解释“少 token”的关键策略（结构化、摘要缓存、分级检索、局部引用）
+
+Tools needed：无（讨论/建议）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：新建一份设计文档，汇总当前已确定的架构/数据结构/“少 token”为核心准则等设计决策。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 新增 `AI.assistant/DESIGN.md`（记录迄今设计）
+
+Tools needed：ApplyPatch（新增文件）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：实现“两层分类”落地：按人物理隔离（qianying/evelyn/lucas）+ 库内多维标签（domain/subdomain/record_kind/source_system/layer 等）；更新 CLI + SQLite 迁移 + README/DESIGN。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 更新 `paths.py`：每人 `data/db/<person>.sqlite3` + `data/raw/<person>/...`
+[X] 更新 `db.py`：schema 迁移 + import 写入新字段 + record_id 纳入 person_key
+[X] 更新 `cli.py`：`--person` + 第二层分类参数；`init-db/list-records/import-health-pdf` 对齐
+[X] 更新 `README.md` / `DESIGN.md`：说明两层结构与示例命令
+[X] smoke test：生成最小 PDF 并导入三人库验证隔离
+
+Tools needed：StrReplace/Write、ReadLints、Shell
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：排查用户导入 PDF 报错 `FileNotFoundError: /Users/qianying/Documents/AI_Assitant_DB/...`（区分 init-db vs import 路径问题）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 在系统上检查该路径/父目录是否存在，定位拼写或权限问题
+[X] 给用户明确结论：错误来自 `--pdf` 路径不存在，并给出修正方式（拖文件到终端/复制路径）
+
+Tools needed：Shell（test -e / ls）、Read（如需要读终端输出）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答如何查看刚导入的 record（`list-records` / sqlite 查询 `chunks`）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[X] 给出 `list-records` 用法与按 `record-kind` 过滤建议
+[X] （可选）提供 sqlite3 查询 `chunks` 示例
+
+Tools needed：无（说明）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答“能否像表格/数据库 UI 那样可视化 record、分列显示医生/时间等”。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 说明：SQLite 桌面工具可表格浏览；医生名/标题等需结构化字段或后续抽取 + 可选自建简易 UI
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：为 AI.assistant 增加本地 Web 页面浏览 SQLite 记录（替代裸 SQL）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 新增 FastAPI + Jinja2 小型 UI（首页选人、记录表、详情+chunks+PDF 下载）
+[X] 默认仅绑定 127.0.0.1；README 说明启动命令
+[X] 确认依赖 jinja2
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答“有哪些网站/UI 框架能让本地 FastAPI+Jinja 页面更好看”。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 给出按改动量分级的选项（纯 CSS / Tailwind / Bootstrap / HTMX / 全栈 SPA）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：将 web UI 模板改为使用现成样式库（Bootstrap 5 CDN），去掉大量手写 CSS。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 重写 base/index/records/record_detail 模板为 Bootstrap 组件
+[X] README 注明使用 Bootstrap CDN（无需 npm）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：健康记录扩展列 + LLM 自动抽取 domain/subdomain + Web「同步文件/重新提取」+ USE_MANUAL。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] db 迁移新增抽取字段；删除缺失 PDF 的孤儿记录
+[X] health_extract：调用 tools/shared/llm_api 解析 JSON（已存在，补 Optional）
+[X] web_ui POST 动作 + 列表/详情展示新列
+[X] 新增 AI.assistant/USE_MANUAL.md；README 链过去
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：用户「LLM 重新提取全部」报 401（OpenAI Key 无效/占位符）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 解释原因与修复（真实 Key 或换 provider）
+[X] web_ui 对 401 附加中文提示；USE_MANUAL 增加排错
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：用户问能否查看 MCP 并重新配置。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 说明 Cursor 全局 mcp.json 位置与项目侧 mcps 缓存区别；给出重配步骤（不泄露密钥）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：AI.assistant 默认改用 AI Builder（OpenAI 兼容端点）；对照 MCP get_base_url。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] llm_api 增加 provider aibuilder
+[X] health_extract / chat / 文档 / Web 提示
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：在仓库根 .env 写入与 mcp.json 同源的 AI_BUILDER_TOKEN。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 读 mcp.json 与 .env，补充 AI_BUILDER_TOKEN 与注释
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：网页按钮改为「本地重新提取」并走 local provider（Ollama 可配置）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] llm_api local：LOCAL_LLM_BASE_URL / MODEL；web_ui 默认 local；模板与 USE_MANUAL
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：误点「Undo All」后恢复被撤销的改动（尽量找回）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（新任务/计划/工具）
+[ ] 定位哪些文件发生了回滚（按最近修改时间/日志线索）
+[ ] 在本地寻找可恢复来源（Cursor/VSCode 本地历史、临时文件、终端输出残留）
+[ ] 如能恢复：把内容写回对应文件并做最小验证（启动/导入/页面）
+
+Tools needed：Shell（列出最近修改时间/查看运行日志）、Glob/Read（定位与读取文件）、ApplyPatch（恢复内容）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：通读 transcript，继续修复 AI.assistant（对齐之前实现：profile/memories/vitals/本地提取新文件/本地重新提取/就诊年龄/Travel Planner）。
+Plan：
+[X] 更新 Scratchpad（本条）
+[ ] 在 transcript 里定位“缺失/回退/报错”的点，列出待修复清单
+[ ] 对照当前代码逐项补回（优先：生日迁移到 profiles → 就诊年龄 → vitals 取值稳定 → 各按钮行为）
+[ ] 自检：Web 页面可用（records/profile/memories/vitals/travel-planner），关键按钮无报错
+
+Tools needed：Grep/Read（读 transcript 定位点）、Read/ApplyPatch（补代码）、Shell（重启 uvicorn/验证）、ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：通读完整聊天记录，从头按需求“恢复全部功能到既定版本”（Bootstrap 5.3、按钮行为、DB 字段/迁移、Profile/Memories、Vitals、Import New、Sync Files、Local re-extract、Travel Planner、USE_MANUAL、项目规则）。
+Plan：
+[X] 从 transcript 提取“最终应有功能/文件/行为”的权威清单（按模块：DB/CLI/Web/Templates/Docs/Rules）
+[X] 对照当前 `AI.assistant/` 状态做差异列表（缺文件/缺路由/缺列/缺按钮/缺文档）
+[ ] 按差异逐项恢复（优先恢复已实现过的内容与相同接口/文本）
+[ ] 自检：web 端主流程可用；关键按钮无报错；样式 Bootstrap 5.3 生效；vitals 不再无限向下
+
+Tools needed：Grep/Read（读 transcript 抽清单）、Read（读当前代码/模板/文档）、ApplyPatch（恢复）、Shell（重启/冒烟测试）、ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：全仓扫描敏感信息/隐私数据风险（cursor-project：.cursorrules、ahacatcher、AI.assistant、tools），给出最佳安全方案（gitignore、密钥管理、备份、误操作恢复、secret 扫描）。
+Plan：
+[ ] 扫描文件类型：.env/.env.local、sqlite、raw/pdf/audio、日志/缓存、截图
+[ ] 扫描内容特征：API keys/tokens/secrets、Bearer/sk_、密码、私密 URL
+[ ] 给出落地方案：git + .gitignore + .env.example + pre-commit secret scan + 数据目录备份策略
+[ ] （可选）直接在仓库里加 `.gitignore`/`.env.example`/`SECURITY.md`（需用户确认）
+
+Tools needed：Glob/Grep/Read（扫描与定位）、Shell（可选：初始化 git/安装 pre-commit）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified

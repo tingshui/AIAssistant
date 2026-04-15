@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  让 ahacatcher 在「关终端」后仍运行（登录后自动拉起，崩溃可自动重启）。
+
+  1. 先停掉当前手动跑的 uvicorn（避免端口占用）。
+  2. 复制本文件到 ~/Library/LaunchAgents/com.YOURNAME.ahacatcher-uvicorn.plist
+  3. 替换 YOUR_HOME、YOURNAME；确认 cd 路径为仓库根目录（与 README 一致）。
+  4. 需要本机/手机同时访问时保留 --host 0.0.0.0；仅本机可改为 127.0.0.1。
+  5. 默认未加 --reload（常驻更省事）；开发期若要热重载可改成在终端前台跑 uvicorn。
+  6. launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.YOURNAME.ahacatcher-uvicorn.plist
+     停止：launchctl bootout gui/$(id -u) …；改代码后重启：launchctl kickstart -k gui/$(id -u)/com.YOURNAME.ahacatcher-uvicorn
+     完整说明见 ahacatcher/README.md「Run the web app」与 how-to-use.md / how-to-use.html。
+
+  FDA：若服务要读 Voice Memos 镜像等，与手动跑 uvicorn 一样，给 plist 里实际用到的 venv/bin/uvicorn 开权限。
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.YOURNAME.ahacatcher-uvicorn</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>-lc</string>
+        <string>cd /YOUR_HOME/Documents/AI_Projects/cursor-project &amp;&amp; exec ./venv/bin/uvicorn ahacatcher.server:app --host 0.0.0.0 --port 8765</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/YOUR_HOME/Library/Logs/ahacatcher-uvicorn.log</string>
+    <key>StandardErrorPath</key>
+    <string>/YOUR_HOME/Library/Logs/ahacatcher-uvicorn.err.log</string>
+</dict>
+</plist>

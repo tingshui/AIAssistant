@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Profile - {{ person }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-0">Profile</h4>
+      <div class="text-muted small">成员：{{ person }}</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="/person/{{ person }}/records">返回记录</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <table class="table align-middle">
+        <thead class="table-light">
+          <tr><th style="width: 220px;">字段</th><th>值</th><th style="width: 220px;"></th></tr>
+        </thead>
+        <tbody>
+          {% for field, label in [
+            ('birthdate', '生日 (YYYY-MM-DD)'),
+            ('location', '位置 (location)'),
+            ('health_summary', '健康摘要 (health_summary)')
+          ] %}
+            <tr data-field="{{ field }}">
+              <td class="fw-semibold">{{ label }}</td>
+              <td>
+                <div class="view">
+                  <div class="text-muted" style="white-space: pre-wrap;">{{ profile.get(field, '') }}</div>
+                </div>
+                <div class="edit d-none">
+                  <textarea class="form-control" rows="{% if field=='health_summary' %}5{% else %}1{% endif %}">{{ profile.get(field, '') }}</textarea>
+                </div>
+              </td>
+              <td class="text-end">
+                <div class="view">
+                  <button class="btn btn-sm btn-outline-primary btn-edit" type="button">Edit</button>
+                  {% if field=='health_summary' %}
+                    <button class="btn btn-sm btn-outline-secondary btn-generate" type="button">从本地文件自动生成</button>
+                  {% endif %}
+                </div>
+                <div class="edit d-none">
+                  <form method="post" action="/person/{{ person }}/profile/field" class="d-inline">
+                    <input type="hidden" name="field" value="{{ field }}" />
+                    <input type="hidden" name="next" value="/person/{{ person }}/profile" />
+                    <input type="hidden" name="value" value="" />
+                    <button class="btn btn-sm btn-success btn-save" type="submit">Save</button>
+                  </form>
+                  <button class="btn btn-sm btn-outline-secondary btn-cancel" type="button">Cancel</button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div id="genAlert" class="alert alert-info d-none"></div>
+      <div id="genError" class="alert alert-danger d-none"></div>
+    </div>
+  </div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    function showEdit(tr, on) {
+      tr.querySelector(".view").classList.toggle("d-none", on);
+      tr.querySelector(".edit").classList.toggle("d-none", !on);
+    }
+
+    for (const tr of document.querySelectorAll("tr[data-field]")) {
+      const btnEdit = tr.querySelector(".btn-edit");
+      const btnCancel = tr.querySelector(".btn-cancel");
+      const form = tr.querySelector("form");
+      const textarea = tr.querySelector("textarea");
+      const hiddenValue = form ? form.querySelector("input[name=value]") : null;
+
+      if (btnEdit) btnEdit.addEventListener("click", () => showEdit(tr, true));
+      if (btnCancel) btnCancel.addEventListener("click", () => showEdit(tr, false));
+      if (form) form.addEventListener("submit", (e) => {
+        if (hiddenValue) hiddenValue.value = textarea.value;
+      });
+
+      const btnGen = tr.querySelector(".btn-generate");
+      if (btnGen) {
+        btnGen.addEventListener("click", async () => {
+          const alert = document.getElementById("genAlert");
+          const err = document.getElementById("genError");
+          alert.classList.add("d-none");
+          err.classList.add("d-none");
+          alert.textContent = "正在生成（本地）...";
+          alert.classList.remove("d-none");
+          try {
+            const res = await fetch(`/person/{{ person }}/profile/health-summary/generate`, { method: "POST" });
+            const data = await res.json();
+            if (data.error) {
+              err.textContent = data.error;
+              err.classList.remove("d-none");
+              alert.classList.add("d-none");
+              return;
+            }
+            textarea.value = data.summary || "";
+            showEdit(tr, true);
+            alert.textContent = "已生成预览，请确认后点击 Save 保存。";
+          } catch (e) {
+            err.textContent = String(e);
+            err.classList.remove("d-none");
+            alert.classList.add("d-none");
+          }
+        });
+      }
+    }
+  </script>
+{% endblock %}
+

@@ -1,0 +1,14 @@
+1 Core Problem:  I have too many ideas, too many partial systems, and too much friction in deciding where things belong. We aim to lower the friction so dramatically to capture my fleeting ideas and organize them.
+2 The User & Context: The user is me. The primary context is that When I speak a thought, the system already knows my information landscape well enough to place it, or at least narrow it down intelligently.
+3 The minimum Viable Product(MVP):It would be a system where a single, simple gestrure triggers the capture of ambient audio and then stop recording with another same gesture triggers, sends it to AI for processing, and deliver a useful follow-up note for later review.
+4 The OKRs(Objectives & Key Results): How do we define success?
+- Objective 1: capture ideas with zero friction.
+    Key Result 1:  The capture action must be a single, simple gesture.
+    Key Result 2: The entire process, from gesture to the AI receiving the audio, must be invisible to any outside observer.
+- Objective 2: organize the ideas.
+    Key Result 1: The AI must accurately transcribe the audio.
+    Key Result 2: The AI must intelligently infer the core Aha! moment, search my known files and folders to find likely destinations.
+    Key Result 3: The desicion of the likely destination should be 100 percent correct. The percentage of the cases where AI doesn't know where to put the ideas should be lower than 5 percent.
+- Objective 3: Deliver a useful follow-up note for later review.
+    Key Result 1: The the thought is a question, the follow-up note should be a answer. The AI must intelligently infer the question and perform a relevant background search. The result should be a concise note containing the original thought and the research summary.
+    Key Result 2: The latency from gesture to the final note being available for review should be under 2 minutes.

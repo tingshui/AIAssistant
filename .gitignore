@@ -1,0 +1,29 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Python / Cursor / OS
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtualenv
+venv/
+.venv/
+
+# AI.assistant private data (NEVER commit)
+AI.assistant/data/
+AI.assistant/.tmp_smoke/
+
+# AhaCatcher data (if present)
+ahacatcher/data/
+
+# Cursor local artifacts
+.cursor/
+

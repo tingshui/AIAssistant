@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Travel Planner - {{ person }}{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-0">Travel Planner（Demo）</h4>
+      <div class="text-muted small">成员：{{ person }}</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="/person/{{ person }}/records">返回记录</a>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <form method="post" action="/person/{{ person }}/travel-planner">
+            <div class="mb-2">
+              <label class="form-label">Destination</label>
+              <input class="form-control" name="destination" value="{{ inputs.destination if inputs else '' }}" />
+            </div>
+            <div class="row g-2">
+              <div class="col">
+                <label class="form-label">Start</label>
+                <input class="form-control" name="start_date" value="{{ inputs.start_date if inputs else '' }}" />
+              </div>
+              <div class="col">
+                <label class="form-label">End</label>
+                <input class="form-control" name="end_date" value="{{ inputs.end_date if inputs else '' }}" />
+              </div>
+            </div>
+            <div class="mb-2 mt-2">
+              <label class="form-label">Travelers</label>
+              <input class="form-control" name="travelers" value="{{ inputs.travelers if inputs else '' }}" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Budget</label>
+              <input class="form-control" name="budget" value="{{ inputs.budget if inputs else '' }}" />
+            </div>
+            <div class="mb-2">
+              <label class="form-label">Preferences</label>
+              <textarea class="form-control" name="preferences" rows="3">{{ inputs.preferences if inputs else '' }}</textarea>
+            </div>
+
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" role="switch" name="include_health_constraints" value="1" {% if inputs and inputs.include_health_constraints %}checked{% endif %}>
+              <label class="form-check-label">include_health_constraints（跨域拿 health_summary）</label>
+            </div>
+
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" role="switch" name="debug" value="1" {% if debug=='1' %}checked{% endif %}>
+              <label class="form-check-label">debug（展示 context bundle）</label>
+            </div>
+
+            <button class="btn btn-primary" type="submit">生成计划</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card shadow-sm mb-3">
+        <div class="card-header">Plan</div>
+        <div class="card-body">
+          {% if result %}
+            <pre class="chunk-text mb-0">{{ result }}</pre>
+          {% else %}
+            <div class="text-muted">提交表单生成计划。</div>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if bundle %}
+        <div class="card shadow-sm">
+          <div class="card-header">Context bundle（{{ bundle_chars }} chars）</div>
+          <div class="card-body">
+            <pre class="chunk-text mb-0">{{ bundle }}</pre>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+

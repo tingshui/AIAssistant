@@ -1,0 +1,9 @@
+After discussion I think the first version of this app Should be super simple. 
+I will use Apple Watch Voice Memo function and I don't need real time. 
+I will trigger it manually or set up time like Wednesday Or I kick off it when I open the voice memo or click on the button. 
+to process the voice record I have in my profile. 
+So, The first version should only include running the backhend part. 
+which is Assume I got a record. Voice record and I will use AI to Organize. 
+summarize the idea of the paragraph and Organize it to your mind. Folding.
+
+V1:

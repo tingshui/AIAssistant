@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}生命体征 - {{ person }}{% endblock %}
+
+{% block head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h4 class="mb-0">生命体征</h4>
+      <div class="text-muted small">成员：{{ person }}（横轴使用「就诊年龄」）</div>
+    </div>
+    <a class="btn btn-outline-secondary" href="/person/{{ person }}/records?domain=health">返回 Health 列表</a>
+  </div>
+
+  {% if not has_any %}
+    <div class="alert alert-warning">暂无生命体征数据（需要先本地重新提取，且文档中包含身高/体重/心率等）。</div>
+  {% endif %}
+
+  <div id="charts"></div>
+{% endblock %}
+
+{% block scripts %}
+  <script>
+    const series = {{ vitals_series_json|safe }};
+
+    function el(tag, attrs = {}, children = []) {
+      const e = document.createElement(tag);
+      for (const [k,v] of Object.entries(attrs)) {
+        if (k === "class") e.className = v;
+        else if (k === "text") e.textContent = v;
+        else e.setAttribute(k, v);
+      }
+      for (const c of children) e.appendChild(c);
+      return e;
+    }
+
+    function renderOne(s) {
+      const wrap = el("div", { class: "card shadow-sm mb-3" });
+      const head = el("div", { class: "card-header d-flex justify-content-between align-items-center" });
+      head.appendChild(el("div", { class: "fw-semibold", text: s.label }));
+      head.appendChild(el("div", { class: "text-muted small", text: `点数：${s.points.length}` }));
+      wrap.appendChild(head);
+
+      const body = el("div", { class: "card-body" });
+      const canvas = el("canvas", {});
+      // Important: fixed size to avoid infinite layout growth
+      canvas.width = 900;
+      canvas.height = 260;
+      body.appendChild(canvas);
+
+      const tableWrap = el("div", { class: "mt-3 border rounded p-2 bg-white" });
+      tableWrap.style.maxHeight = "240px";
+      tableWrap.style.overflow = "auto";
+
+      const table = el("table", { class: "table table-sm mb-0" });
+      const thead = el("thead", { class: "table-light" });
+      const trh = el("tr");
+      trh.appendChild(el("th", { text: "年龄(岁)" }));
+      trh.appendChild(el("th", { text: "数值" }));
+      thead.appendChild(trh);
+      table.appendChild(thead);
+      const tbody = el("tbody");
+      for (const p of s.points) {
+        const tr = el("tr");
+        tr.appendChild(el("td", { text: (Math.round(p.x * 10) / 10).toFixed(1) }));
+        tr.appendChild(el("td", { text: `${p.y}${p.unit ? " " + p.unit : ""}` }));
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      tableWrap.appendChild(table);
+      body.appendChild(tableWrap);
+      wrap.appendChild(body);
+
+      const ctx = canvas.getContext("2d");
+      new Chart(ctx, {
+        type: "scatter",
+        data: {
+          datasets: [{
+            label: s.label,
+            data: s.points.map(p => ({x: p.x, y: p.y})),
+            pointRadius: 3,
+          }]
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: false,
+          scales: {
+            x: { title: { display: true, text: "就诊年龄 (岁)" } },
+            y: { title: { display: true, text: s.label } }
+          }
+        }
+      });
+      return wrap;
+    }
+
+    const root = document.getElementById("charts");
+    for (const s of series) root.appendChild(renderOne(s));
+  </script>
+{% endblock %}
+

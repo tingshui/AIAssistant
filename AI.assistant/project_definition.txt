@@ -1,0 +1,33 @@
+AI Personal Assistant — Project Definition (copy/paste doc)
+
+Last updated:
+Owner:
+
+1) Elevator pitch (一句话)
+- 本地优先、可追溯、可扩展的个人 AI 助理：先做 health 个人数据库与浏览/抽取/记忆，再扩展到 travel 等模块。
+
+2) Primary user / target audience (目标用户)
+- 家庭多成员（我/女儿/儿子），需要数据隔离、不混用。
+
+3) Top goals (最重要的目标)
+- 本地 SQLite 做 source of truth（raw evidence + 结构化字段 + profile + memories）
+- 健康资料导入与自动抽取（domain/subdomain + 临床字段 + vitals）
+- Web UI 透明可控：同步磁盘/本地提取新文件/本地重新提取/查看详情与 chunks
+
+4) Non-goals (明确不做什么)
+- 不默认把所有隐私数据发云端；不在页面加载时自动触发 LLM
+- 不做医疗诊断/治疗建议
+
+5) Interfaces (交互方式)
+- [x] Web UI（FastAPI + Jinja2 + Bootstrap 5.3）
+- [x] CLI（init-db/import/list）
+
+6) Storage layout (两层隔离)
+- 物理隔离：每个成员独立 DB 与 raw 目录
+- 逻辑标签：domain/subdomain/record_kind/layer/source_system/sensitivity_tier
+
+7) Milestones
+- M1: health 个人数据库（导入 PDF、浏览、抽取、同步磁盘、基本 profile）
+- M2: vitals 图表页 + memories 工作流（候选→确认→作废）
+- M3: travel planner demo（include_health_constraints + debug context bundle）
+

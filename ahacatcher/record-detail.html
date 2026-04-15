@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>笔记全文 — Aha! Catcher</title>
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --text: #1a1a1a;
+      --muted: #5c5c5c;
+      --accent: #2563eb;
+      --border: #e5e2dc;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    .wrap { max-width: 720px; margin: 0 auto; padding: 2rem 1.25rem 3rem; }
+    h1 { font-size: 1.15rem; font-weight: 600; margin: 0 0 0.35rem; word-break: break-all; }
+    .meta { font-size: 0.82rem; color: var(--muted); margin: 0 0 1rem; }
+    .err-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      margin-bottom: 1rem;
+      font-size: 0.9rem;
+    }
+    .full-content {
+      font-size: 0.82rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin: 0;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      max-height: calc(100vh - 10rem);
+      overflow: auto;
+    }
+    nav.foot {
+      margin-top: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    nav.foot a { color: var(--accent); text-decoration: none; }
+    nav.foot a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 id="pageTitle">笔记全文</h1>
+    <p id="metaLine" class="meta"></p>
+    <div id="banner"></div>
+    <pre id="content" class="full-content" hidden></pre>
+    <nav class="foot">
+      <a id="backTagLink" href="map.html">← 话题地图</a>
+      ·
+      <a href="/">主应用</a>
+    </nav>
+  </div>
+  <script>
+(function () {
+  const API_BASE = "";
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  async function run() {
+    const params = new URLSearchParams(window.location.search);
+    const file = (params.get("file") || "").trim();
+    const contentEl = document.getElementById("content");
+    const metaLine = document.getElementById("metaLine");
+    const banner = document.getElementById("banner");
+    const pageTitle = document.getElementById("pageTitle");
+    const backTagLink = document.getElementById("backTagLink");
+
+    contentEl.hidden = true;
+    contentEl.textContent = "";
+    banner.innerHTML = "";
+
+    if (!file) {
+      pageTitle.textContent = "笔记全文";
+      banner.innerHTML =
+        '<div class="err-banner">缺少参数 <code>file</code>。请从<a href="map.html">话题地图</a>按标签进入列表后，点击 <strong>details</strong>。</div>';
+      metaLine.textContent = "";
+      return;
+    }
+
+    pageTitle.textContent = file;
+    metaLine.textContent = "加载中…";
+
+    let data;
+    try {
+      const res = await fetch(API_BASE + "/api/note-full?file=" + encodeURIComponent(file));
+      if (res.status === 404) {
+        banner.innerHTML = '<div class="err-banner">未找到该文件（请确认已在 .env 配置 ideas 目录且文件名正确）。</div>';
+        metaLine.textContent = "";
+        return;
+      }
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      data = await res.json();
+    } catch (e) {
+      banner.innerHTML = '<div class="err-banner">加载失败：' + esc(String(e)) + "</div>";
+      metaLine.textContent = "";
+      return;
+    }
+
+    const name = data.file || file;
+    pageTitle.textContent = name;
+    metaLine.textContent = "UTF-8 Markdown 原文";
+    contentEl.textContent = data.content || "";
+    contentEl.hidden = false;
+
+    const refTag = (params.get("from_tag") || "").trim();
+    if (refTag) {
+      backTagLink.href = "records-by-tag.html?tag=" + encodeURIComponent(refTag);
+      backTagLink.textContent = "← 返回标签 · " + refTag;
+    }
+  }
+
+  run();
+})();
+  </script>
+</body>
+</html>
