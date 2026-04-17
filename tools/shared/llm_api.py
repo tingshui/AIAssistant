@@ -12,6 +12,14 @@ import base64
 from typing import Optional, Union, List
 import mimetypes
 
+
+def _timeout_seconds_for(provider: str) -> float:
+    if provider == "local":
+        return float(os.getenv("LOCAL_LLM_TIMEOUT_SECONDS", "90") or "90")
+    if provider == "aibuilder":
+        return float(os.getenv("AI_BUILDER_TIMEOUT_SECONDS", "120") or "120")
+    return float(os.getenv("LLM_TIMEOUT_SECONDS", "90") or "90")
+
 def load_environment():
     """Load environment variables from .env files in order of precedence"""
     # Order of precedence:
@@ -19,13 +27,13 @@ def load_environment():
     # 2. .env.local (user-specific overrides)
     # 3. .env (project defaults)
     # 4. .env.example (example configuration)
-    
+
     env_files = ['.env.local', '.env', '.env.example']
     env_loaded = False
-    
+
     print("Current working directory:", Path('.').absolute(), file=sys.stderr)
     print("Looking for environment files:", env_files, file=sys.stderr)
-    
+
     for env_file in env_files:
         env_path = Path('.') / env_file
         print(f"Checking {env_path.absolute()}", file=sys.stderr)
@@ -38,7 +46,7 @@ def load_environment():
             with open(env_path) as f:
                 keys = [line.split('=')[0].strip() for line in f if '=' in line and not line.startswith('#')]
                 print(f"Keys loaded from {env_file}: {keys}", file=sys.stderr)
-    
+
     if not env_loaded:
         print("Warning: No .env files found. Using system environment variables only.", file=sys.stderr)
         print("Available system environment variables:", list(os.environ.keys()), file=sys.stderr)
@@ -49,20 +57,20 @@ load_environment()
 def encode_image_file(image_path: str) -> tuple[str, str]:
     """
     Encode an image file to base64 and determine its MIME type.
-    
+
     Args:
         image_path (str): Path to the image file
-        
+
     Returns:
         tuple: (base64_encoded_string, mime_type)
     """
     mime_type, _ = mimetypes.guess_type(image_path)
     if not mime_type:
         mime_type = 'image/png'  # Default to PNG if type cannot be determined
-        
+
     with open(image_path, "rb") as image_file:
         encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-        
+
     return encoded_string, mime_type
 
 def create_llm_client(provider="openai"):
@@ -70,9 +78,7 @@ def create_llm_client(provider="openai"):
         api_key = os.getenv('OPENAI_API_KEY')
         if not api_key:
             raise ValueError("OPENAI_API_KEY not found in environment variables")
-        return OpenAI(
-            api_key=api_key
-        )
+        return OpenAI(api_key=api_key, timeout=_timeout_seconds_for(provider))
     elif provider == "azure":
         api_key = os.getenv('AZURE_OPENAI_API_KEY')
         if not api_key:
@@ -80,7 +86,8 @@ def create_llm_client(provider="openai"):
         return AzureOpenAI(
             api_key=api_key,
             api_version="2024-08-01-preview",
-            azure_endpoint="https://msopenai.openai.azure.com"
+            azure_endpoint="https://msopenai.openai.azure.com",
+            timeout=_timeout_seconds_for(provider),
         )
     elif provider == "deepseek":
         api_key = os.getenv('DEEPSEEK_API_KEY')
@@ -89,6 +96,7 @@ def create_llm_client(provider="openai"):
         return OpenAI(
             api_key=api_key,
             base_url="https://api.deepseek.com/v1",
+            timeout=_timeout_seconds_for(provider),
         )
     elif provider == "siliconflow":
         api_key = os.getenv('SILICONFLOW_API_KEY')
@@ -96,7 +104,8 @@ def create_llm_client(provider="openai"):
             raise ValueError("SILICONFLOW_API_KEY not found in environment variables")
         return OpenAI(
             api_key=api_key,
-            base_url="https://api.siliconflow.cn/v1"
+            base_url="https://api.siliconflow.cn/v1",
+            timeout=_timeout_seconds_for(provider),
         )
     elif provider == "aibuilder":
         # AI Builders Space — OpenAI-compatible SDK base (see MCP ai-builders-coach get_base_url).
@@ -113,7 +122,7 @@ def create_llm_client(provider="openai"):
             base_url = f"{raw_base}/v1"
         else:
             base_url = raw_base
-        return OpenAI(api_key=api_key, base_url=base_url)
+        return OpenAI(api_key=api_key, base_url=base_url, timeout=_timeout_seconds_for(provider))
     elif provider == "anthropic":
         api_key = os.getenv('ANTHROPIC_API_KEY')
         if not api_key:
@@ -137,29 +146,56 @@ def create_llm_client(provider="openai"):
         if not base_url.endswith("/v1"):
             base_url = base_url + "/v1"
         api_key = os.getenv("LOCAL_LLM_API_KEY", "ollama")
-        return OpenAI(base_url=base_url, api_key=api_key)
+        return OpenAI(base_url=base_url, api_key=api_key, timeout=_timeout_seconds_for(provider))
     else:
         raise ValueError(f"Unsupported provider: {provider}")
 
-def query_llm(prompt: str, client=None, model=None, provider="openai", image_path: Optional[str] = None) -> Optional[str]:
+
+def _provider_debug(provider: str, model: Optional[str]) -> str:
+    if provider == "local":
+        base_url = (
+            os.getenv("LOCAL_LLM_BASE_URL")
+            or os.getenv("OLLAMA_BASE_URL")
+            or "http://127.0.0.1:11434/v1"
+        ).strip().rstrip("/")
+        if not base_url.endswith("/v1"):
+            base_url = base_url + "/v1"
+        return f"provider=local base_url={base_url} model={model!r} timeout={_timeout_seconds_for('local')}s"
+    if provider == "aibuilder":
+        raw_base = (os.getenv("AI_BUILDER_BASE_URL") or "https://space.ai-builders.com/backend").strip().rstrip("/")
+        return f"provider=aibuilder base_url={raw_base} model={model!r} timeout={_timeout_seconds_for('aibuilder')}s"
+    return f"provider={provider} model={model!r} timeout={_timeout_seconds_for(provider)}s"
+
+
+def query_llm(
+    prompt: str,
+    client=None,
+    model=None,
+    provider="openai",
+    image_path: Optional[str] = None,
+    *,
+    raise_on_error: bool = False,
+) -> Optional[str]:
     """
     Query an LLM with a prompt and optional image attachment.
-    
+
     Args:
         prompt (str): The text prompt to send
         client: The LLM client instance
         model (str, optional): The model to use
         provider (str): The API provider to use
         image_path (str, optional): Path to an image file to attach
-        
+
     Returns:
         Optional[str]: The LLM's response or None if there was an error
     """
     if client is None:
         client = create_llm_client(provider)
-    
+
     try:
         # Set default model
+        if model is not None and isinstance(model, str) and not model.strip():
+            model = None
         if model is None:
             if provider == "openai":
                 model = "gpt-4o"
@@ -174,19 +210,19 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
             elif provider == "gemini":
                 model = "gemini-2.0-flash-exp"
             elif provider == "local":
-                model = os.getenv("LOCAL_LLM_MODEL", "llama3.2")
+                model = (os.getenv("LOCAL_LLM_MODEL") or "").strip() or "llama3.2:latest"
             elif provider == "aibuilder":
                 model = os.getenv("AI_BUILDER_MODEL", "grok-4-fast")
-        
+
         if provider in ["openai", "local", "deepseek", "azure", "siliconflow", "aibuilder"]:
             messages = [{"role": "user", "content": []}]
-            
+
             # Add text content
             messages[0]["content"].append({
                 "type": "text",
                 "text": prompt
             })
-            
+
             # Add image content if provided
             if image_path:
                 if provider in ("openai", "aibuilder"):
@@ -195,31 +231,42 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
                         {"type": "text", "text": prompt},
                         {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{encoded_image}"}}
                     ]
-            
+
             kwargs = {
                 "model": model,
                 "messages": messages,
                 "temperature": 0.7,
             }
-            
+
+            # Local models: prefer faster, more deterministic outputs by default.
+            if provider == "local":
+                try:
+                    kwargs["temperature"] = float(os.getenv("LOCAL_LLM_TEMPERATURE", "0") or "0")
+                except Exception:
+                    kwargs["temperature"] = 0.0
+                try:
+                    kwargs["max_tokens"] = int(os.getenv("LOCAL_LLM_MAX_TOKENS", "800") or "800")
+                except Exception:
+                    kwargs["max_tokens"] = 800
+
             # Add o1-specific parameters
             if model == "o1":
                 kwargs["response_format"] = {"type": "text"}
                 kwargs["reasoning_effort"] = "low"
                 del kwargs["temperature"]
-            
+
             response = client.chat.completions.create(**kwargs)
             return response.choices[0].message.content
-            
+
         elif provider == "anthropic":
             messages = [{"role": "user", "content": []}]
-            
+
             # Add text content
             messages[0]["content"].append({
                 "type": "text",
                 "text": prompt
             })
-            
+
             # Add image content if provided
             if image_path:
                 encoded_image, mime_type = encode_image_file(image_path)
@@ -231,14 +278,14 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
                         "data": encoded_image
                     }
                 })
-            
+
             response = client.messages.create(
                 model=model,
                 max_tokens=1000,
                 messages=messages
             )
             return response.content[0].text
-            
+
         elif provider == "gemini":
             model = client.GenerativeModel(model)
             if image_path:
@@ -258,9 +305,12 @@ def query_llm(prompt: str, client=None, model=None, provider="openai", image_pat
                 )
             response = chat_session.send_message(prompt)
             return response.text
-            
+
     except Exception as e:
-        print(f"Error querying LLM: {e}", file=sys.stderr)
+        dbg = _provider_debug(str(provider), str(model) if model is not None else None)
+        print(f"Error querying LLM: {e} ({dbg})", file=sys.stderr)
+        if raise_on_error:
+            raise RuntimeError(f"LLM request failed: {e} ({dbg})") from e
         return None
 
 def main():
@@ -278,7 +328,7 @@ def main():
 
     if not args.model:
         if args.provider == 'openai':
-            args.model = "gpt-4o" 
+            args.model = "gpt-4o"
         elif args.provider == "deepseek":
             args.model = "deepseek-chat"
         elif args.provider == "siliconflow":

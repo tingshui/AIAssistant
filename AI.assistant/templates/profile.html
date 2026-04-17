@@ -19,6 +19,8 @@
         <tbody>
           {% for field, label in [
             ('birthdate', '生日 (YYYY-MM-DD)'),
+            ('legal_name', '患者法定/常用姓名（用于稳定抽取 patient_name）'),
+            ('primary_doctor_name', '主治/首诊医生姓名（可选，用于稳定抽取 doctor_name）'),
             ('location', '位置 (location)'),
             ('health_summary', '健康摘要 (health_summary)')
           ] %}
@@ -111,4 +113,3 @@
     }
   </script>
 {% endblock %}
-

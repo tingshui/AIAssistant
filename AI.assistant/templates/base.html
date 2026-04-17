@@ -22,11 +22,11 @@
       <div class="container">
         <a class="navbar-brand fw-semibold" href="/">AI.assistant</a>
         <div class="navbar-nav ms-auto">
+          <a class="nav-link" href="/admin/extraction-profiles">Extraction</a>
           {% if person %}
             <a class="nav-link" href="/person/{{ person }}/records">记录</a>
             <a class="nav-link" href="/person/{{ person }}/profile">Profile</a>
             <a class="nav-link" href="/person/{{ person }}/memories">Memories</a>
-            <a class="nav-link" href="/person/{{ person }}/travel-planner">Travel Planner</a>
           {% endif %}
         </div>
       </div>
@@ -47,6 +47,11 @@
               全量<strong>本地</strong>重新提取依赖本机 Ollama（或 <code>LOCAL_LLM_BASE_URL</code>），不调用云端 API；耗时与记录条数、模型速度有关。
               失败原因见列表「抽取错误摘要」列或详情页。
             </p>
+            {% if flash.job and flash.job_person %}
+              <div class="mt-2">
+                <a class="btn btn-sm btn-outline-primary" href="/person/{{ flash.job_person }}/jobs/{{ flash.job }}">查看进度</a>
+              </div>
+            {% endif %}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
         {% endif %}
@@ -71,4 +76,3 @@
     {% block scripts %}{% endblock %}
   </body>
 </html>
-

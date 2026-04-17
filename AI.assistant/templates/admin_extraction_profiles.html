@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}Extraction Profiles · AI.assistant{% endblock %}
+
+{% block content %}
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h1 class="h4 mb-1">Extraction Profiles</h1>
+      <div class="text-secondary small">
+        编辑 <code>extraction_intent</code>（写回 <code>{{ catalog_path }}</code>，保存后立即生效）。
+      </div>
+    </div>
+    <a class="btn btn-outline-secondary btn-sm" href="/">返回首页</a>
+  </div>
+
+  <form method="post" action="/admin/extraction-profiles/save" class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th style="min-width: 26rem;">Profile id</th>
+              <th>Domain</th>
+              <th>Source kind</th>
+              <th>Family</th>
+              <th style="min-width: 16rem;">Intent</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ r.id }}</div>
+                  {% if r.label %}
+                    <div class="text-secondary small">{{ r.label }}</div>
+                  {% endif %}
+                </td>
+                <td><span class="badge text-bg-light">{{ r.domain }}</span></td>
+                <td><span class="badge text-bg-light">{{ r.source_kind }}</span></td>
+                <td><span class="badge text-bg-light">{{ r.document_family }}</span></td>
+                <td>
+                  <input
+                    class="form-control form-control-sm"
+                    type="text"
+                    name="intent__{{ r.id }}"
+                    value="{{ r.extraction_intent }}"
+                    placeholder="e.g. visits_only"
+                  />
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="d-flex justify-content-end gap-2">
+        <button type="submit" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </form>
+{% endblock %}

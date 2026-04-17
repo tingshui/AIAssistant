@@ -33,3 +33,6 @@ UI 使用 Bootstrap 5.3 CDN。
 
 见 `AI.assistant/USE_MANUAL.md`。
 
+## 设计叙事（复杂 PDF / 信息污染演进）
+
+见 [`docs/complex-pdf-extraction-journey.md`](docs/complex-pdf-extraction-journey.md)（**中文详述**：各问题根因、具体尝试、如何验证假设、假设推翻后的下一假设；含 program-first / semantic-only 分工）。

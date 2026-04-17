@@ -157,6 +157,7 @@ If needed, you can further use the `tools/shared/web_scraper.py` file to scrape 
 - **Scratchpad-first, no exceptions:** Even when the user asks "did you use Scratchpad?" or meta-questions about the protocol, the agent previously skipped updating Scratchpad before the first tool call. ALWAYS update Scratchpad as the FIRST action of EVERY turn, before read_file or any other tool. Record this failure when it happens.
 - **Failure recorded (2026-04-15):** I accidentally used `Read` on `.cursorrules` before updating Scratchpad. Must update Scratchpad FIRST on every user message, even before reading any file.
 - **Failure recorded (2026-04-15, again):** I again read `.cursorrules` before updating Scratchpad. Treat this as a hard stop next time: update Scratchpad first, then read.
+- **Failure recorded (2026-04-16):** I performed tool calls (Read/Grep) before updating Scratchpad. Hard stop next time: update Scratchpad first, then read `.cursorrules`, then proceed.
 - **openai-whisper + PyTorch in venv:** If `RuntimeError: Numpy is not available` or NumPy 2.x vs torch wheel mismatch, pin `numpy<2` (e.g. 1.26.x) in the project venv.
 - **Python 3.9 + Pydantic v2:** In `BaseModel` field annotations, use `Optional[T]` instead of `T | None`; Pydantic may fail to evaluate PEP604 unions on 3.9 (`unsupported operand type(s) for |`).
 - **ahacatcher Voice Memos（macOS）：** Import 默认只扫 **`~/Documents/VoiceMemosMirror`**（`AHA_CATCHER_VOICE_MEMOS_MIRROR_DIR` / `AHA_CATCHER_VOICE_MEMOS_USE_MIRROR_ONLY=1`）。先用 **`ahacatcher/scripts/sync_voice_memos_mirror.py`**（默认同路径）或 launchd 同步。若列表仍空，先跑同步或检查路径。若坚持直接读系统库，设 `AHA_CATCHER_VOICE_MEMOS_USE_MIRROR_ONLY=0` 并为 **终端 / Cursor / Python** 开**完全磁盘访问权限**。
@@ -515,6 +516,686 @@ Plan：
 [ ] 自检：web 端主流程可用；关键按钮无报错；样式 Bootstrap 5.3 生效；vitals 不再无限向下
 
 Tools needed：Grep/Read（读 transcript 抽清单）、Read（读当前代码/模板/文档）、ApplyPatch（恢复）、Shell（重启/冒烟测试）、ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：主页新增“Access level”开关区块；开关控制各模块检索/编排入口可用性。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（本地优先/隐私优先/两层隔离）
+[X] 后端：把 access_controls 读写接入 `index()` 与新增保存接口
+[X] 前端：首页 `templates/index.html` 新增第二个框起来的 Access level 区块（按模块分组 switches）
+[ ] 控制：基础路由/导航按 access_controls 隐藏或 403（先做 Records/Profile/Memories/Vitals/Travel Planner）
+[ ] 自检：修复 uvicorn 端口占用，用新端口启动并刷新页面看到新区域
+
+Tools needed：Read/ApplyPatch/ReadLints/Shell
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：移除每个成员页面里的 `Travel Planner` 入口（导航栏/可见链接）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（不影响本地优先/隐私优先/两层隔离）
+[X] 搜索并移除所有模板里的 `travel-planner` 链接（主要 `base.html` navbar）
+[ ] （可选）保留路由但不可见；如需彻底禁用则返回 404/403
+[ ] 自检：重启 uvicorn，刷新确认入口消失
+
+Tools needed：Grep/Read/ApplyPatch/ReadLints/Shell
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：同一份 PDF（含多次就诊）为同一人创建多条 record，但复用同一份 stored PDF 文件。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（两层隔离、导入需可追溯）
+[X] 读现有 CLI `import-health-pdf` 的参数与 record_id 生成规则
+[X] 在 `db.py` 增加“基于同一 content_hash + salt 生成不同 record_id”的 helper
+[X] 新增 CLI 命令（`import-health-pdf-multi`）：一次复制 PDF 到 raw（一次），然后按 visits 列表插入多条 records（stored_path 相同）
+[X] 冒烟：对 `Qianying_XH_2025.pdf` 导入 2 条 visit（不同 observed_at/visit_date），验证 list-records 出现 2 条且 stored_path 相同
+
+Tools needed：Read/Grep/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：`import-health-pdf-multi` 支持自动从 PDF 文本提取 visit dates（无 LLM），无需手动 `--visit-dates`。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（隐私优先：不自动调用 LLM）
+[X] 在 `db.py` 增加从文本中提取日期的函数（多格式，归一化到 YYYY-MM-DD，去重排序 + 简单过滤窗口）
+[X] CLI：`import-health-pdf-multi` 增加 `--auto-visit-dates` + `--max-visits` + `--dry-run`
+[X] 冒烟：对 `Qianying_XH_2025.pdf` 跑 auto 提取（dry-run），并用 `--max-visits` 自动导入
+
+Tools needed：Read/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：自动提取 visit dates 时“包含全部 visits”（不做日期窗口过滤/不截断）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（隐私优先：不调用 LLM）
+[X] 提取函数支持 `include_all=True`：返回全部候选日期（仅做格式归一/去重/排序）
+[X] CLI 增加 `--include-all-visits`，dry-run 与导入都支持
+[X] 冒烟：对 `Qianying_XH_2025.pdf` dry-run 回到全量日期列表（24 个）
+
+Tools needed：Read/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：从就诊总结 PDF 中“只提取 Encounters 里的 2025 doctor visits（约 8 次）”，忽略 Problems/Allergies/Medications 等章节日期噪声。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（隐私优先：不调用 LLM）
+[X] 读取 PDF 抽取文本，定位 `Encounters` 章节边界与格式
+[X] 在 `db.py` 新增按章节提取：`extract_encounter_items_from_text(text, year=2025)`（只从 Encounters 段取日期，保留同日多条）
+[X] CLI 增加 `--extract-strategy encounters --visit-year 2025`（dry-run 可看到 8 条 encounter）
+[X] 冒烟：对 `Qianying_XH_2025.pdf` dry-run 输出 8 条；导入创建 8 条 records（同一 stored_path）
+
+Tools needed：Read/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：修复 Web「本地重新提取」全失败 + 清理 qianying 多余 records（仅保留 2025 Encounters 8 条）+ 解释/移除意外 lab_report。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 排查本地 re-extract 失败：定位为 LOCAL_LLM_MODEL 空字符串导致“model is required”；已修复 llm_api 对空 model 的处理，并验证本地调用返回 ok
+[X] 查清 lab_report 来源（records.original_path=AI.assistant/.tmp_smoke/qianying.pdf），并已删除该记录
+[X] 提供/实现一键清理命令 `cleanup-pdf-visits`：删除同 PDF 下非 [encounter] 前缀的旧 doctor_visit_notes；已清理 6 条多余记录
+[ ] 自检：web 上 re-extract 至少能成功 1 条；records 列表只剩期望记录（8 条 encounter 记录）
+
+Tools needed：Read/Grep/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：增强本地 LLM 调用稳定性（超时+清晰错误）；Web「全部本地重新提取」改为后台任务避免浏览器超时。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（本地优先/隐私优先）
+[X] tools/shared/llm_api.py：增加显式 timeout（env 可配）；支持 raise_on_error 返回详细异常信息（含 base_url/model/provider）
+[X] health_extract/web_ui：调用 query_llm 时开启 raise_on_error，页面能显示真实失败原因而非“无返回”
+[X] web_ui：把 reextract-all 改为后台任务（BackgroundTasks），立即 redirect；增加 job status endpoint 与简单进度消息
+[X] 自检：触发后台 reextract-all 不再卡死；单条失败能看到明确原因
+
+Task：Ollama 仍超时：降低 re-extract 单条耗时（限制输入长度/收敛输出），让后台 job 能稳定推进。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] Lessons 回顾（本地优先；允许牺牲少量抽取完整度换稳定）
+[ ] web_ui：re-extract 读取 extraction text 时加 max_chars（env 可配），避免把整份大 PDF 喂给模型
+[ ] llm_api：为 local 默认 max_tokens 更小/temperature=0（env 可配），降低生成时延
+[ ] 自检：触发 reextract-one 在 timeout 内能返回（成功或可解析失败），reextract-all job 进度持续增长
+
+Tools needed：Read/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Tools needed：Read/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：用户与 ChatGPT 讨论后认为瓶颈不在 Ollama，而在「建档/分块/章节分类/再抽取」管线设计；要求再读 `AI.assistant/project_definition.txt`。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 通读 `AI.assistant/project_definition.txt`（重点 1124–1263 及前后上下文）
+[X] 用中文概括：与当前实现（chunks + 直接 LLM 抽取）的差距与可采纳的演进步骤
+
+Tools needed：Read（读 project_definition）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回应 ChatGPT 建议「先做第一层建档」及 embedding 在完整流程中的位置（见 project_definition 1265–1280）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 用中文说明：为何先做建档、embedding 放第二层、与当前 AI.assistant 的对应关系
+
+Tools needed：无（说明）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答「是否已有 chunks、是否整份 PDF 丢给 Ollama」。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 查 `db.py` / 导入逻辑 / `get_record_text_for_extraction` / `web_ui` re-extract 实际输入
+
+Tools needed：Grep/Read
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答用户「你想怎么做？」——第一层建档演进路线（section 筛选 → 再抽；暂不上 embedding）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 向用户说明分阶段方案（P0 规则筛选输入 / P1 chunk_sections 表 / P2 visits 实体表 / 最后 embedding）
+
+Tools needed：无（规划）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：阅读用户附的 `project_definition.txt` 1283–1706（文档家族/分层抽取/置信度与证据），并回应与当前实现的对应关系。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 用中文提炼要点 + 与 AI.assistant 现状对齐 + 可采纳优先级
+
+Tools needed：无（用户已附文）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答用户「如何把『doctor summary 只关心 visits、其余为 noise』这类定义落实到选 chunk」的实现思路。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文说明：定义存放形式、过滤管线、与 record_kind/document_family 的绑定方式
+
+Tools needed：无（设计说明）；若落地则 Read/ApplyPatch（db.py / health_extract / web_ui）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：用户要求「不由用户指定 Encounters；由用户对文档家族的定义推断 chunk 是否 visit 相关；不确定则问用户」— 设计回应。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文说明：定义驱动打分、阈值与人工确认闭环、与硬编码 section 的替代关系
+
+Tools needed：无（设计）；落地需 db/web
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：用户希望「定义结构」分层分类：不同 domain（如 travel vs health）；同域下不同信息源（如 doctor visit vs 手表）关注点不同。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文给出分层 taxonomy + extraction_profile 绑定方式（概念 schema）
+
+Tools needed：无（设计说明）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：落地分层 extraction 定义（YAML + records 字段 + get_record_text_for_extraction 按 profile 选 chunk）；默认兼容旧数据。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 读 `db.py` 迁移/导入/`get_record_text_for_extraction`
+[X] 新增 `AI.assistant/config/extraction_profiles.json` + `extraction_profiles.py` 解析
+[X] DB：`records` 增加 `source_kind`/`document_family`/`extraction_intent`/`extraction_profile_id`；迁移与默认值
+[X] 导入与 multi-import 写入合理默认；`get_record_text_for_extraction` 按 profile 过滤 chunk
+[X] USE_MANUAL 简短说明
+[X] ReadLints + 冒烟
+
+Tools needed：Read/ApplyPatch/ReadLints/Shell
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：把 `AI.assistant/config/extraction_profiles.json` 做成可编辑网页（只改 intent），并保存回文件（热加载生效）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 新增管理页：列出 profiles（id/domain/source_kind/document_family/intent）并可编辑 intent
+[X] POST 保存：写回 `extraction_profiles.json`（原子写入），并 `reset_catalog_cache()`
+[X] 自检：页面保存后，配置文件与进程内缓存同步更新
+
+Tools needed：Read/ApplyPatch/ReadLints/Shell
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：在主页展示 extraction defaults（用框框区块显示默认映射）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] `index()` 读取 extraction catalog 的 defaults 并传给模板
+[X] `templates/index.html` 在 Access level 下新增 “Extraction defaults” 区块（Bootstrap card）
+[X] 自检：主页可看到 defaults 内容 + 跳转到编辑页
+
+Tools needed：Read/ApplyPatch/ReadLints/Shell
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：首页 Extraction 区块加一句话解释 extraction 的含义。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 修改 `templates/index.html`：在 Extraction 文案下加一句话
+[X] 自检：刷新首页能看到该句
+
+Tools needed：Read/ApplyPatch/ReadLints/Shell
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：修复 reextract-all job 进度链接 404（/person/.../jobs/... 被拼成重复路径），并说明终端查看进度与 chunk 选择原因。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 定位 404 来源（页面链接/flash 文案/相对路径）
+[X] 修复：页面显示可点击的绝对链接到 /person/<person>/jobs/<job_id>
+[X] 说明：终端如何 curl 查看 job；解释为何 picked_chunks 总是 5/6/7
+
+Tools needed：Read/Grep/ApplyPatch/Shell/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回应用户「Ollama 把 visit date 填进时间字段、没进就诊日期」与 ChatGPT 在 project_definition 2038–2330 的分析是否一致。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 对照 `health_extract.py` prompt/schema 与 `db.update_record_from_extraction` 映射
+[X] 用中文给出判断与最小排查顺序（原始 JSON → schema → prompt → 后处理）
+
+Tools needed：Grep/Read（已对照）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回答用户「如何看模型原始 JSON 里的 visit_date」。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 搜索代码是否持久化 raw LLM JSON；若无则给可操作步骤（终端打印 / sqlite / uvicorn 日志 / 临时断点）
+[X] 结论：DB 不存 raw；用脚本调用 `extract_health_metadata` 打印 dict；要 wire 原文需 `query_llm` 或改代码
+
+Tools needed：Grep/Read
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：增加「按需打印抽取详情」开关（不设长期落库）：环境变量或等价方式，开启时在 terminal stderr 打印模型原始返回 + 解析后 JSON（含 visit_date）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] `health_extract.extract_health_metadata`：读 `AI_ASSISTANT_PRINT_EXTRACTION_DETAIL`，可选 `detail_context`；stderr 输出 raw + parsed
+[X] `web_ui._re_extract_one` 传入 `detail_context=record_id`
+[X] `USE_MANUAL.md` 说明启动命令前缀（等价 --print-detail）
+
+Tools needed：Read/ApplyPatch/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：说明「JSON 里 visit_date 是什么、如何用当前调试开关查看」。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文说明：raw 字符串 vs 解析字段 visit_date vs 入库 visit_date_extracted；8766 启动 + PRINT_DETAIL 步骤
+
+Tools needed：无（说明）
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回应用户 vitals 日期污染 encounter visit_date；对照 project_definition 分析与当前实现；给出原因 + 最小改动路径（必要时改 prompt）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 读 `health_extract` prompt、`extraction_profiles` visits_only chunk 策略
+[X] 中文解释：为何 JSON 里只有一个 visit_date、真实 encounter 日期可能在哪/为何未入库
+[X] prompt 补强 vitals≠visit_date + `visit_date_evidence`（仅 prompt；不入库）
+
+Tools needed：Read/Grep/ApplyPatch
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：实现三层结构（切块→分类→过滤）中的“visit_event spans 过滤”，避免 vitals 日期污染。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 新增 `src/ai_assistant/visit_event_filter.py`：对文本做 span 标注（visit_event/vitals/other），只保留 visit_event
+[X] 在 `db.get_record_text_for_extraction`：对 yearly_longitudinal_summary + visits_only 且开关开启时，调用过滤器
+[X] `USE_MANUAL.md` 增加开关说明（默认关闭）
+[X] 自检：打开开关后，stderr 打印过滤前后长度与命中 spans 统计
+
+Tools needed：Read/ApplyPatch/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：修复 `visit_event_filter`：本地模型返回含未转义引号的 JSON 导致 JSONDecodeError，过滤失效；改为行号区间（vitals_ranges）小 JSON。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 重写 `visit_event_filter.py`：编号行 → LLM 只输出 vitals 行范围 → 从原文剔除这些行
+[X] ReadLints
+[X] 更新 `db.py` 日志字段、`USE_MANUAL.md` 描述
+
+Tools needed：ApplyPatch/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：解释为何过滤 vitals 后 visit_date 变成 2025-03-28（Telephone Encounter）而非 12/9。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文说明：多 record 共用同一 chunk 文本 + 过滤后残片相同 + schema 单 visit_date
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回应用户「八条记录重提取后一模一样」——先分析根因、不改代码（record→输入未隔离）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文说明：为何 8 条会吃到同一段文本 + 与终端日志一致的现象
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：给出「八条 record 重提取结果相同」的解决方案分级（不改代码，先方案）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文：验证 → 短期映射 → 中期 encounter 块 → 长期结构化
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回应用户「如何识别 table 类文档、掌握规律以便复用」（对照 project_definition 3512–3764）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文：结构分类信号 → repeated-record table 判定 → 行级处理器 → 与 narrative 混合文档路由
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回应用户贴的 ChatGPT 对「结构路由 + 事件单元 + milestone」的评论（project_definition 3770–4030）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文：与当前实现对照 + 认同点 + 建议的下一步 milestone（不写代码除非用户要求）
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：说明「事件单元 vs 表格行」的识别方案（教系统/模型的分层做法）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文：定义 event unit、与 table row 关系、structure routing、弱监督与指纹、何时用 LLM
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：实现 Encounters 行级拆分 + record→行绑定，修复多 record 重提取同输入。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 读 `db.py` extract_encounter_items / get_record_text_for_extraction / records 列
+[X] 并入 `db.py`：`extract_encounter_row_blocks_from_text` + `stable_record_id_with_salt` 绑定；chunk 失败则读 full PDF 对齐 idx
+[X] `get_record_text_for_extraction`：stderr `[structure_route]`
+[X] ReadLints + USE_MANUAL
+
+Tools needed：Read/ApplyPatch/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：修复 encounter 行绑定命中后 LLM 仍输出空 visit_date → UI「就诊日期」空：注入锚定 + 后处理回填。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] `db.get_record_text_for_extraction` 返回 `(text, bound_iso)`；绑定命中时可选注入 `[ENCOUNTER_ROW_ANCHOR]` 前缀
+[X] `web_ui._re_extract_one`：normalize 后若 visit_date 空且 bound_iso 有值则回填
+[X] `_health_evidence_for_summary` 关闭 anchor 注入避免噪声
+[X] ReadLints
+[X] USE_MANUAL 一行说明
+
+Tools needed：Read/StrReplace/ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：阅读用户对 project_definition 4036–4208 的摘录并回应（与 encounter 日期分工/回填策略对齐）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文回应：认同点、与当前实现对应、可选后续演进
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：就诊日期已准，但患者/医生/诊断抽取不稳；分析根因并做小改动（profile 锚定姓名、净化 evidence、prompt 强化）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 读 health_extract / normalize / web_ui re_extract
+[X] 实现：抽取时注入 profile 姓名提示；anchor 标明勿抄进 JSON；prompt 明确患者/医生/诊断完整性
+[X] Profile：`legal_name` / `primary_doctor_name` + env 兜底；入库覆盖
+[X] ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：回应用户「进一步减弱 LLM、确定性字段交给程序」——给出 AI.assistant 演进改法（对照 project_definition 4213–4450）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 中文：职责分层、与现状对齐、分阶段里程碑（结构解析 vs LLM 语义）
+
+Tools needed：无
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：阶段 A — encounter 行块确定性解析 + 入库前程序优先 merge（减弱 LLM 抄表）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] 读 db.py 绑定/Encounter 行格式
+[X] 新增 `parse_encounter_row_deterministic(block)` + 绑定返回该 dict
+[X] `get_record_text_for_extraction` 第三返回值；`web_ui` merge
+[X] ReadLints + 冒烟 import
+[X] USE_MANUAL 一句
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：A+B+C 收窄：B=PDF 前几页 demographics；C=semantic-only 重提取（LLM 不主导 patient/doctor/date）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad（本条）
+[X] db：`read_pdf_text_first_pages` + `parse_demographics_from_text` + `merge_demographics_into_normalized`
+[X] health_extract：`build_semantic_extraction_prompt` + `normalize_semantic_extraction` + `extract_health_metadata(..., extraction_mode=...)`
+[X] web_ui：重提取默认 semantic-only；合并顺序：visit_date→row_det→demographics→canonical；semantic 时不注入 anchor
+[X] USE_MANUAL；ReadLints
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：给用户 uvicorn 启动命令（含 PRINT_EXTRACTION_DETAIL 打印 JSON）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 给出仓库根目录一行命令
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：撰写「复杂 PDF 信息污染与抽取演进」文档（中英叙述、教训、截图占位）。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] 新增 `AI.assistant/docs/complex-pdf-extraction-journey.md`
+[X] README 链到该文档
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：在 journey 文档中嵌入截图（UI）+ assets 说明。
+Plan：
+[X] 复制截图到 `AI.assistant/docs/assets/`
+[X] 更新 `complex-pdf-extraction-journey.md` §8 与 `assets/README.md`
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：删除 `visit-date-ui-mismatch-2026-04-16.png` 并更新 journey 文档引用。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] Delete png；改 `complex-pdf-extraction-journey.md` §8；改 `docs/assets/README.md`；Document history
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：将 `complex-pdf-extraction-journey.md` 扩写为详细中文版（根因/尝试/验证/推翻假设链）。
+Plan：
+[X] 读 .cursorrules
+[X] 读现有 journey 全文并重写/扩写
+[X] 更新 Document history
+[X] README 链中文描述
+
+Checklist：
+[X] Scratchpad updated
+[X] Lessons reviewed
+[X] Tools identified
+
+Task：将当前 workspace 变更提交到本地 git（必要时 init），并视 remote 情况 push。
+Plan：
+[X] 读 .cursorrules
+[X] 更新 Scratchpad
+[X] `git status` / init / add / commit -F
+[X] 若有 `origin` 则 `git push`
 
 Checklist：
 [X] Scratchpad updated

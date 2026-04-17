@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "profiles": {
+    "health.clinical_document.single_visit_note.default": {
+      "label": "Health clinical PDF — single visit (direct extraction)",
+      "domain": "health",
+      "source_kind": "clinical_document",
+      "document_family": "single_visit_note",
+      "extraction_intent": "default",
+      "chunk_strategy": {
+        "type": "all_chunks"
+      }
+    },
+    "health.clinical_document.yearly_longitudinal_summary.visits_only": {
+      "label": "Health clinical PDF — yearly/longitudinal summary, visits only",
+      "domain": "health",
+      "source_kind": "clinical_document",
+      "document_family": "yearly_longitudinal_summary",
+      "extraction_intent": "visits_only, visit should have info like diagnose. ignore any past visit history, referral, problems, insurance",
+      "chunk_strategy": {
+        "type": "section_between_markers",
+        "start_markers": [
+          "Encounters",
+          "Encounter"
+        ],
+        "end_markers": [
+          "Assessments",
+          "Assessment",
+          "Problems"
+        ],
+        "case_insensitive": true,
+        "if_no_match": "use_all_chunks"
+      }
+    },
+    "travel.generic_blob.default": {
+      "label": "Travel — default (no chunk filter yet)",
+      "domain": "travel",
+      "source_kind": "generic_blob",
+      "document_family": "unknown",
+      "extraction_intent": "default",
+      "chunk_strategy": {
+        "type": "all_chunks"
+      }
+    },
+    "fallback.all_chunks": {
+      "label": "Fallback — use all chunks",
+      "domain": "*",
+      "source_kind": "*",
+      "document_family": "*",
+      "extraction_intent": "*",
+      "chunk_strategy": {
+        "type": "all_chunks"
+      }
+    }
+  },
+  "defaults": {
+    "health": {
+      "clinical_document": {
+        "single_visit_note": {
+          "default": "health.clinical_document.single_visit_note.default"
+        },
+        "yearly_longitudinal_summary": {
+          "visits_only": "health.clinical_document.yearly_longitudinal_summary.visits_only",
+          "default": "health.clinical_document.yearly_longitudinal_summary.visits_only"
+        }
+      }
+    },
+    "travel": {
+      "generic_blob": {
+        "unknown": {
+          "default": "travel.generic_blob.default"
+        }
+      }
+    }
+  }
+}

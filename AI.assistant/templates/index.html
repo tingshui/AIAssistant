@@ -24,7 +24,156 @@
           </div>
         </div>
       </div>
+
+      <div class="card shadow-sm mt-4">
+        <div class="card-body">
+          <h5 class="card-title mb-1">Access level（访问级别）</h5>
+          <div class="text-muted small mb-3">
+            这里的开关用于控制各模块的入口是否可用（后续会进一步用于检索与编排）。
+          </div>
+
+          <div class="accordion" id="accessAccordion">
+            {% for p in people %}
+              {% set a = p.access %}
+              <div class="accordion-item">
+                <h2 class="accordion-header" id="heading-{{ p.key }}">
+                  <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-{{ p.key }}">
+                    {{ p.key }}
+                  </button>
+                </h2>
+                <div id="collapse-{{ p.key }}" class="accordion-collapse collapse" data-bs-parent="#accessAccordion">
+                  <div class="accordion-body">
+                    <form method="post" action="/person/{{ p.key }}/access-controls" class="vstack gap-3">
+                      <input type="hidden" name="next" value="/" />
+
+                      <div>
+                        <div class="fw-semibold mb-2">Module 1 — Health</div>
+                        <div class="row g-2">
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-health-enabled" name="health_enabled" value="1" {% if a.health.enabled %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-health-enabled">Health module enabled</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-health-records" name="health_records" value="1" {% if a.health.records %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-health-records">Records</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-health-profile" name="health_profile" value="1" {% if a.health.profile %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-health-profile">Health Profile</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-health-memories" name="health_memories" value="1" {% if a.health.memories %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-health-memories">Memories</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-health-vitals" name="health_vitals" value="1" {% if a.health.vitals %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-health-vitals">Vitals</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div class="fw-semibold mb-2">Module 2 — Travel</div>
+                        <div class="row g-2">
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-travel-enabled" name="travel_enabled" value="1" {% if a.travel.enabled %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-travel-enabled">Travel module enabled</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-travel-planner" name="travel_planner" value="1" {% if a.travel.planner %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-travel-planner">Travel Planner</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-travel-preferences" name="travel_preferences" value="1" {% if a.travel.preferences %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-travel-preferences">Travel preferences（Profile 字段）</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-travel-memories" name="travel_memories" value="1" {% if a.travel.memories %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-travel-memories">Use travel memories</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-travel-health" name="travel_include_health_constraints" value="1" {% if a.travel.include_health_constraints %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-travel-health">Allow include health constraints</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <div class="fw-semibold mb-2">Module 3–6（占位）</div>
+                        <div class="row g-2">
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-m3" name="module3_enabled" value="1" {% if a.module3.enabled %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-m3">Module 3 enabled</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-m4" name="module4_enabled" value="1" {% if a.module4.enabled %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-m4">Module 4 enabled</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-m5" name="module5_enabled" value="1" {% if a.module5.enabled %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-m5">Module 5 enabled</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check form-switch">
+                              <input class="form-check-input" type="checkbox" role="switch" id="{{ p.key }}-m6" name="module6_enabled" value="1" {% if a.module6.enabled %}checked{% endif %}>
+                              <label class="form-check-label" for="{{ p.key }}-m6">Module 6 enabled</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-sm btn-primary">保存</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mt-4">
+        <div class="card-body">
+          <div class="d-flex align-items-start justify-content-between gap-3">
+            <div>
+              <h5 class="card-title mb-1">Extraction（抽取配置）</h5>
+              <div class="text-muted small">
+                管理 <code>extraction_profiles</code>（改 intent 即可）。
+                一句话：Extraction = 从文档内容里抽取结构化字段，写入数据库便于查询。
+              </div>
+            </div>
+            <a class="btn btn-sm btn-primary" href="/admin/extraction-profiles">打开管理页</a>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 {% endblock %}
-
